@@ -2,7 +2,7 @@
 This system will be used as a backend for an e-commerce system.
 The e-commerce site will have two primary user-roles: customers, and sellers. Customers purchase products that are listed on the site by sellers.
 
-- Each customer shall have an ID, several addresses (one of which is to be marked as the "primary address,"), and credit / debit cards on file that can be used as payment (one of these cards should be desginated the 'prefered' payment method). Each customer should have an email address so that receipts or important announcements can be sent to them.
+- Each customer shall have an ID, several addresses (one of which is to be marked as the "primary address,"), and credit / debit cards on file that can be used as payment (one of these cards should be desginated the 'prefered' payment method). Each payment method should have an associated billing address. Each customer should have an email address so that receipts or important announcements can be sent to them.
 - Every address should have a country, city, state / province, address line 1, address line 2, and postal code.
 - Customers can use the website to find products to purchase. Every product is listed by a seller, and should have information related to the number of items in stock.
 - Each purchase can involve multiple products, and uses one form of payment. The date of purchase should be recorded.
