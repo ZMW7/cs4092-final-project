@@ -1,5 +1,6 @@
 # Schema
 
+_See [here](dbml_relational_schema_diagram.pdf) for a diagram of the relational schema._
 ## Tables
 ### Customers
 
