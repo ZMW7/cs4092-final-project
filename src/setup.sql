@@ -249,7 +249,10 @@ INSERT INTO payment_methods (   card_number,        card_expiration,    card_cod
 (                               '6011000000000004', '2026-09-01',       321,        4,                  4),
 (                               '4012888888881881', '2030-03-01',       654,        5,                  5),
 (                               '5105105105105100', '2027-07-01',       987,        6,                  6),
-(                               '4222222222222',    '2028-12-01',       111,        7,                  7);
+(                               '4222222222222',    '2028-12-01',       111,        7,                  7),
+(                               '4222852222222',    '2028-12-01',       111,        7,                  7),
+(                               '422275917622',     '2026-12-01',       111,        7,                  8),
+(                               '3812058397691758', '2029-03-01',       111,        7,                  6);
 
 UPDATE customers SET primary_address_id = 1, prefered_payment_id = 1 WHERE id = 1;
 UPDATE customers SET primary_address_id = 2, prefered_payment_id = 2 WHERE id = 2;
@@ -261,7 +264,10 @@ UPDATE customers SET primary_address_id = 7, prefered_payment_id = 7 WHERE id = 
 INSERT INTO sellers (seller_name)
 VALUES              ('Crest'),
                     ('Vita Coco'),
-                    ('Half Priced Books')
+                    ('Half Priced Books'),
+                    ('Illegal Products LLC'),
+                    ('False Advertising LLC'),
+                    ('Cool Guitars LLC');
 
 -- Products
 INSERT INTO products (  stock,  seller_id,  price) 
@@ -270,8 +276,12 @@ VALUES              (   1500,   1,          9.99),
                     (   0,      2,          12.50),
                     (   85,     2,          6.00),
                     (   300,    3,          6.99),
+                    (   300,    3,          13.99),
+                    (   300,    SELECT UNIQUE id FROM sellers WHERE seller_name = 'Illegal Products LLC',   123.45),
+                    (   22,     4,          5.00),
                     (   300,    3,          12.00),
-                    (   12,     1,          1000.00);
+                    (   12,     1,          1000.00),
+                    (   2,      SELECT UNIQUE id FROM sellers WHERE seller_name = 'Cool Guitars LLC',       500.00);
 
 
 -- Moderators
@@ -289,3 +299,26 @@ VALUES              (   1,              1,          9),
                     (   4,              4,          10),
                     (   5,              6,          7);
 
+-- Product removals
+INSERT INTO product_removals (  removed_by, product_id)
+VALUES                       (  1,          7),
+                             (  2,          8);
+
+-- Seller removals
+INSERT INTO seller_removals (   removed_by, seller_id)
+VALUES                      (   3,          SELECT UNIQUE id FROM sellers WHERE seller_name = 'Illegal Products LLC');
+
+-- Purchases
+INSERT INTO purchases   (   customer_id,                                                payment_method_id)
+VALUES                  (   SELECT UNIQUE id 
+                            FROM customers 
+                            WHERE email_address = 'masayoshi.takanaka@takanaka.com',    6);
+
+-- Product sales
+INSERT INTO product_sales   (   purchase_id,    product_id, price_per_item, quantity) VALUES
+                            (   1,              11,         500.00,         1       ),
+                            (   1,              1,          9.99,           4       );
+
+-- Deliveries
+INSERT INTO deliveries  (   purchase_id,    address_id,     delivery_status,    shipped_on,     estimated_delivery_time     ) VALUES
+                        (   1,              1,              'delivered',        '2026-06-01',   '2026-06-04 17:00:00+00'    );
