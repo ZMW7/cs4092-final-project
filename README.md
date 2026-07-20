@@ -3,3 +3,4 @@
 ## Documentation Links
 - [Requirements](requirements.md)
 - [Relational Diagram](relational_diagram.pdf)
+- [Schema](schema.md)
