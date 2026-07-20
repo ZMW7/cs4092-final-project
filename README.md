@@ -2,4 +2,4 @@
 
 ## Documentation Links
 - [Requirements](requirements.md)
-- [Relational Diagram](dbml_relational_diagram.pdf)
+- [Relational Diagram](relational_diagram.pdf)
