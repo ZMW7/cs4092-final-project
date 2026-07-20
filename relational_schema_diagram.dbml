@@ -2,9 +2,9 @@ TABLE customers {
   id uuid [primary key]
   created_at datetime [not null]
   primary_address_id uuid
-  default_payment_id uuid
+  preferred_payment_id uuid
   email_address varchar [not null]
-  password_hash varchar [not null]
+  password_hash char [not null]
 }
 
 TABLE addresses {
@@ -23,14 +23,14 @@ TABLE payment_methods {
   id uuid [primary key]
   card_number varchar [not null]
   card_expiration date [not null]
-  code tinyint [not null]
+  card_code tinyint [not null]
   billing_address_id uuid [not null]
   customer_id uuid [not null]
 }
 
 TABLE products {
   id uuid [primary key]
-  stock int [not null]
+  stock integer [not null]
   seller_id uuid [not null]
   created_at datetime [not null]
 }
@@ -39,7 +39,7 @@ TABLE ratings {
   customer_id uuid [not null]
   product_id uuid [not null]
   rating smallint [not null]
-  created_at datetime [not null]
+  created_at date [not null]
 }
 
 TABLE sellers {
@@ -69,7 +69,7 @@ TABLE reports {
 // in the products table, a new table is made
 TABLE product_removals {
   reviewer uuid [not null]
-  product uuid [not null]
+  product_id uuid [not null]
   removed_at datetime [not null]
 }
 
@@ -78,15 +78,15 @@ TABLE product_removals {
 // in the sellers table, a new table is made
 TABLE seller_removals {
   reviewer uuid [not null]
-  seller uuid [not null]
+  seller_id uuid [not null]
   removed_at datetime [not null]
 }
 
 TABLE purchases {
   id uuid [primary key]
   created_at datetime [not null]
-  customer uuid [not null]
-  payment_method uuid [not null]
+  customer_id uuid [not null]
+  payment_method_id uuid [not null]
 }
 
 TABLE product_sales {
@@ -107,7 +107,7 @@ TABLE deliveries {
 // References
 // Customer
 Ref: customers.primary_address_id - addresses.id // Customer to primary address, one to one
-Ref: customers.default_payment_id - payment_methods.id
+Ref: customers.preferred_payment_id - payment_methods.id
 
 // Payment methods
 Ref: payment_methods.id > addresses.id // many payment methods to one address
@@ -117,9 +117,9 @@ Ref: reports.customer_id > customers.id // many reports can be made by one custo
 Ref: reports.reviewed_by > moderators.id
 
 Ref: product_removals.reviewer > moderators.id
-Ref: product_removals.product - products.id
+Ref: product_removals.product_id - products.id
 Ref: seller_removals.reviewer > moderators.id
-Ref: seller_removals.seller > sellers.id
+Ref: seller_removals.seller_id > sellers.id
 
 // Products
 Ref: products.seller_id > sellers.id
@@ -129,8 +129,8 @@ Ref: ratings.customer_id > customers.id
 Ref: ratings.product_id <> products.id
 
 // Purchases
-Ref: purchases.customer > customers.id
-Ref: purchases.payment_method > payment_methods.id
+Ref: purchases.customer_id > customers.id
+Ref: purchases.payment_method_id > payment_methods.id
 
 // Sales
 Ref: product_sales.purchase_id > purchases.id
