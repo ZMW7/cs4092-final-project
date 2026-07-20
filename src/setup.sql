@@ -215,7 +215,7 @@ INSERT INTO customers       (   email_address,          password_hash)
 VALUES                      (   'jane.doe@example.com', '$2a$12$dCf5F65DsnKEbDZoWfUZY.auLmH0xnZ3y4EacLIM1/.jczhUjR36.');
 
 INSERT INTO customers       (   email_address,          password_hash) 
-VALUES                      (   'jane.doe@example.com', '$2a$12$dCf5F65DsnKEbDZoWfUZY.auLmH0xnZ3y4EacLIM1/.jczhUjR36.');
+VALUES                      (   'jim.joe@example.com', '$2a$12$dCf5F65DsnKEbDZoWfUZY.auLmH0xnZ3y4EacLIM1/.jczhUjR36.');
 
 INSERT INTO customers       (   email_address,          password_hash) 
 VALUES                      (   'grant@example.com',    '$2a$12$/8aF7hGx0mjL9Uk4j2VpEO7Smkr8MnxXWoy.E327y2qXueYMr8ove');
@@ -227,20 +227,30 @@ INSERT INTO customers   (email_address,                         password_hash)
 VALUES                  ('masayoshi.takanaka@takanaka.com',     '$2a$12$JqlCLqHJtIoJKZHoHg6y9eCBdcUxH0b7hz9oxswuNTkjBYfuH2ete');
 
 INSERT INTO customers   (email_address,                         password_hash)
-VALUES                  ('masayoshi.takanaka@takanaka.com',     '$2a$12$JqlCLqHJtIoJKZHoHg6y9eCBdcUxH0b7hz9oxswuNTkjBYfuH2ete');
+VALUES                  ('minecraftiscool@gmail.com',           '$2a$12$JqlCLqHJtIoJKZHoHg6y9eCBdcUxH0b7hz9oxswuNTkjBYfuH2ete'),
+                        ('amongusiscool@gmail.com',             '$2a$12$fUNEeYsGvcdP5vQ3Sw/N2Owu52oMB0g5vNSs02kuzUIsgrV5vlpuq'),
+                        ('friendlygreeter@gmail.com',           '$2a$12$KWA.ucO/YKflNcOJeCAPMOniKk0Y/K0xrLz7U/nuK4xkFIo0TiUI.');
 
+INSERT INTO customers       (   email_address,          password_hash) 
+VALUES                      (   'primeminister@uk.gov', '$2a$12$gxPPc.V/70vD9ZkuykgB6uJyxct68nBkb8kVBATDmsiPlKwY4Zqra')
+RETURNING id;
+
+-- Addresses
 INSERT INTO addresses       (   country,                administrative_division,    city,           line1,                  line2,              postal_code,    customer_id)
-VALUES                      (   'United Kingdom',                                   London,         '10 Downing Street',                        'SWA1A 2AA',    SELECT(
-    INSERT INTO customers       (   email_address,          password_hash) 
-    VALUES                      (   'primeminister@uk.gov', '$2a$12$gxPPc.V/70vD9ZkuykgB6uJyxct68nBkb8kVBATDmsiPlKwY4Zqra')
-    RETURNING id;
-));
+VALUES                      (   'United Kingdom',       NULL,                       'London',       '10 Downing Street',    NULL,                'SWA1A 2AA',    (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'primeminister@uk.gov'));
 
 INSERT INTO addresses       (   country,                    administrative_division,    city,           line1,                  line2,              postal_code,    customer_id)
-VALUES                      (   'United States of America', 'Ohio'                      Bexley,         '358 N. Parkview',                          '43209',        SELECT UNIQUE id FROM customers WHERE customers.email_address = 'governor@ohio.gov');
+VALUES                      (   'United States of America', 'Ohio',                     'Bexley',       '358 N. Parkview',      NULL,                '43209',        (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'governor@ohio.gov'));
 
 INSERT INTO addresses       (   country,                    administrative_division,    city,                   line1,                  line2,              postal_code,    customer_id)
-VALUES                      (   'Japan',                    'Nagano',                   '767-3 Karuizawa',      'Kitasaku District',    'PO Box 232',       '389-0199',     SELECT UNIQUE id FROM customers WHERE customers.email_address = 'masayoshi.takanaka@takanaka.com');
+VALUES                      (   'Japan',                    'Nagano',                   '767-3 Karuizawa',      'Kitasaku District',    'PO Box 232',       '389-0199',     (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'masayoshi.takanaka@takanaka.com'));
+
+INSERT INTO addresses       (   country,                    administrative_division,    city,                   line1,                      line2,              postal_code,    customer_id) VALUES
+                            (   'United States of America', 'Illinois',                 'Chicago',              '7949 S Essex Ave',         'APT 1',            '60617-1395',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'minecraftiscool@gmail.com')),
+                            (   'India',                    'Telangana',                'Hyderabad',            'Building No. 3-6-276/1 & 277/1 University, Road, Himayatnagar', NULL, '500029', (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jane.doe@example.com')),
+                            (   'United States of America', 'Wisconsin',                'Milwaukee',            '220 W Fond Du Lac Ave',    NULL,               '53208-4092',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jim.joe@example.com')),
+                            (   'Hungary',                  NULL,                       'Budapest',             'Kossuth Lajos',            'u. 14-16',         '1053',         (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'friendlygreeter@gmail.com'));
+
 
 INSERT INTO payment_methods (   card_number,        card_expiration,    card_code,  billing_address_id, customer_id) VALUES
 (                               '4111111111111111', '2028-05-01',       123,        1,                  1),
@@ -249,19 +259,25 @@ INSERT INTO payment_methods (   card_number,        card_expiration,    card_cod
 (                               '6011000000000004', '2026-09-01',       321,        4,                  4),
 (                               '4012888888881881', '2030-03-01',       654,        5,                  5),
 (                               '5105105105105100', '2027-07-01',       987,        6,                  6),
-(                               '4222222222222',    '2028-12-01',       111,        7,                  7);
+(                               '4222222222222',    '2028-12-01',       111,        7,                  7),
+(                               '4222852222222',    '2028-12-01',       111,        7,                  7),
+(                               '422275917622',     '2026-12-01',       111,        7,                  8),
+(                               '3812058397691758', '2029-03-01',       111,        7,                  6);
 
-UPDATE customers SET primary_address_id = 1, prefered_payment_id = 1 WHERE id = 1;
-UPDATE customers SET primary_address_id = 2, prefered_payment_id = 2 WHERE id = 2;
-UPDATE customers SET primary_address_id = 3, prefered_payment_id = 3 WHERE id = 3;
-UPDATE customers SET primary_address_id = 4, prefered_payment_id = 4 WHERE id = 4;
-UPDATE customers SET primary_address_id = 7, prefered_payment_id = 7 WHERE id = 7;
+UPDATE customers SET primary_address_id = 1, preferred_payment_id = 1 WHERE id = 1;
+UPDATE customers SET primary_address_id = 2, preferred_payment_id = 2 WHERE id = 2;
+UPDATE customers SET primary_address_id = 3, preferred_payment_id = 3 WHERE id = 3;
+UPDATE customers SET primary_address_id = 4, preferred_payment_id = 4 WHERE id = 4;
+UPDATE customers SET primary_address_id = 7, preferred_payment_id = 7 WHERE id = 7;
 
 -- Sellers
 INSERT INTO sellers (seller_name)
 VALUES              ('Crest'),
                     ('Vita Coco'),
-                    ('Half Priced Books')
+                    ('Half Priced Books'),
+                    ('Illegal Products LLC'),
+                    ('False Advertising LLC'),
+                    ('Cool Guitars LLC');
 
 -- Products
 INSERT INTO products (  stock,  seller_id,  price) 
@@ -270,8 +286,12 @@ VALUES              (   1500,   1,          9.99),
                     (   0,      2,          12.50),
                     (   85,     2,          6.00),
                     (   300,    3,          6.99),
+                    (   300,    3,          13.99),
+                    (   300,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'),   123.45),
+                    (   22,     4,          5.00),
                     (   300,    3,          12.00),
-                    (   12,     1,          1000.00);
+                    (   12,     1,          1000.00),
+                    (   2,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Cool Guitars LLC'),       500.00);
 
 
 -- Moderators
@@ -289,3 +309,27 @@ VALUES              (   1,              1,          9),
                     (   4,              4,          10),
                     (   5,              6,          7);
 
+-- Product removals
+INSERT INTO product_removals (  removed_by, product_id)
+VALUES                       (  1,          7),
+                             (  2,          8);
+
+-- Seller removals
+INSERT INTO seller_removals (   removed_by, seller_id)
+VALUES                      (   3,          (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'));
+
+-- Purchases
+INSERT INTO purchases   (   customer_id,                                                payment_method_id)
+VALUES                  (   (SELECT DISTINCT id 
+                            FROM customers 
+                            WHERE email_address = 'masayoshi.takanaka@takanaka.com'),    6);
+-- VALUES (6, 6);
+
+-- Product sales
+INSERT INTO product_sales   (   purchase_id,    product_id, price_per_item, quantity) VALUES
+                            (   1,              11,         500.00,         1       ),
+                            (   1,              1,          9.99,           4       );
+
+-- Deliveries
+INSERT INTO deliveries  (   purchase_id,    address_id,     delivery_status,    shipped_on,     estimated_delivery_time     ) VALUES
+                        (   1,              1,              'delivered',        '2026-06-01',   '2026-06-04 17:00:00+00'    );
