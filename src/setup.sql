@@ -237,17 +237,17 @@ RETURNING id;
 
 -- Addresses
 INSERT INTO addresses       (   country,                administrative_division,    city,           line1,                  line2,              postal_code,    customer_id)
-VALUES                      (   'United Kingdom',                                   'London',       '10 Downing Street',    NULL                'SWA1A 2AA',    (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'primeminister@uk.gov'));
+VALUES                      (   'United Kingdom',       NULL,                       'London',       '10 Downing Street',    NULL,                'SWA1A 2AA',    (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'primeminister@uk.gov'));
 
 INSERT INTO addresses       (   country,                    administrative_division,    city,           line1,                  line2,              postal_code,    customer_id)
-VALUES                      (   'United States of America', 'Ohio',                     'Bexley',       '358 N. Parkview',      NULL                '43209',        (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'governor@ohio.gov'));
+VALUES                      (   'United States of America', 'Ohio',                     'Bexley',       '358 N. Parkview',      NULL,                '43209',        (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'governor@ohio.gov'));
 
 INSERT INTO addresses       (   country,                    administrative_division,    city,                   line1,                  line2,              postal_code,    customer_id)
 VALUES                      (   'Japan',                    'Nagano',                   '767-3 Karuizawa',      'Kitasaku District',    'PO Box 232',       '389-0199',     (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'masayoshi.takanaka@takanaka.com'));
 
 INSERT INTO addresses       (   country,                    administrative_division,    city,                   line1,                      line2,              postal_code,    customer_id) VALUES
                             (   'United States of America', 'Illinois',                 'Chicago',              '7949 S Essex Ave',         'APT 1',            '60617-1395',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'minecraftiscool@gmail.com')),
-                            (   'India',                    'Telangana',                'Hyderabad',            'Building No. 3-6-276/1 & 277/1 University, Road, Himayatnagar', '500029', (SELECT DISTINCT id FROM customers WHERE customers.email = 'jane.doe@example.com'))
+                            (   'India',                    'Telangana',                'Hyderabad',            'Building No. 3-6-276/1 & 277/1 University, Road, Himayatnagar', NULL, '500029', (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jane.doe@example.com')),
                             (   'United States of America', 'Wisconsin',                'Milwaukee',            '220 W Fond Du Lac Ave',    NULL,               '53208-4092',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jim.joe@example.com')),
                             (   'Hungary',                  NULL,                       'Budapest',             'Kossuth Lajos',            'u. 14-16',         '1053',         (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'friendlygreeter@gmail.com'));
 
