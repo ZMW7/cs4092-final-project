@@ -1,0 +1,141 @@
+TABLE customers {
+  id uuid [primary key]
+  created_at datetime [not null]
+  primary_address_id uuid
+  default_payment_id uuid
+  email_address varchar [not null]
+  password_hash varchar [not null]
+}
+
+TABLE addresses {
+  id uuid [primary key]
+  country varchar [not null]
+  administrative_division varchar [not null]
+  city varchar [not null]
+  line1 varchar [not null]
+  line2 varchar
+  postal_code varchar
+
+  customer_id uuid
+}
+
+TABLE payment_methods {
+  id uuid [primary key]
+  card_number varchar [not null]
+  card_expiration date [not null]
+  code tinyint [not null]
+  billing_address_id uuid [not null]
+  customer_id uuid [not null]
+}
+
+TABLE products {
+  id uuid [primary key]
+  stock int [not null]
+  seller_id uuid [not null]
+  created_at datetime [not null]
+}
+
+TABLE ratings {
+  customer_id uuid [not null]
+  product_id uuid [not null]
+  rating smallint [not null]
+  created_at datetime [not null]
+}
+
+TABLE sellers {
+  id uuid [primary key]
+  created_at datetime [not null]
+}
+
+TABLE moderators {
+  id uuid [primary key]
+  created_at datetime [not null]
+  first_name varchar [not null]
+  last_name varchar [not null]
+  email varchar [not null]
+  password_hash varchar [not null]
+}
+
+TABLE reports {
+  id uuid [primary key]
+  customer_id uuid [not null]
+  reviewed_by uuid
+  varchar reason [not null]
+  created_at datetime [not null]
+}
+
+// The vast majority of products are not removed,
+// so instead of storing the remover as a column
+// in the products table, a new table is made
+TABLE product_removals {
+  reviewer uuid [not null]
+  product uuid [not null]
+  removed_at datetime [not null]
+}
+
+// The vast majority of sellers are not removed,
+// so instead of storing the remover as a column
+// in the sellers table, a new table is made
+TABLE seller_removals {
+  reviewer uuid [not null]
+  seller uuid [not null]
+  removed_at datetime [not null]
+}
+
+TABLE purchases {
+  id uuid [primary key]
+  created_at datetime [not null]
+  customer uuid [not null]
+  payment_method uuid [not null]
+}
+
+TABLE product_sales {
+  id uuid [primary key]
+  purchase_id uuid [not null]
+  product_id uuid [not null]
+}
+
+TABLE deliveries {
+  id uuid [primary key]
+  purchase_id uuid [not null]
+  address_id uuid [not null]
+  status varchar
+  shipped_on date
+  estimated_delivery_time datetime
+}
+
+// References
+// Customer
+Ref: customers.primary_address_id - addresses.id // Customer to primary address, one to one
+Ref: customers.default_payment_id - payment_methods.id
+
+// Payment methods
+Ref: payment_methods.id > addresses.id // many payment methods to one address
+
+// Reports
+Ref: reports.customer_id > customers.id // many reports can be made by one customer, but each report is made by only one customer
+Ref: reports.reviewed_by > moderators.id
+
+Ref: product_removals.reviewer > moderators.id
+Ref: product_removals.product - products.id
+Ref: seller_removals.reviewer > moderators.id
+Ref: seller_removals.seller > sellers.id
+
+// Products
+Ref: products.seller_id > sellers.id
+
+// Ratings
+Ref: ratings.customer_id > customers.id
+Ref: ratings.product_id <> products.id
+
+// Purchases
+Ref: purchases.customer > customers.id
+Ref: purchases.payment_method > payment_methods.id
+
+// Sales
+Ref: product_sales.purchase_id > purchases.id
+Ref: product_sales.product_id > products.id
+
+// Deliveries
+Ref: deliveries.purchase_id > purchases.id
+Ref: deliveries.address_id <> addresses.id
