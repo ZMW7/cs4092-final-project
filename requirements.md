@@ -10,3 +10,4 @@ The e-commerce site will have two primary user-roles: customers, and sellers. Cu
 - Customers should be able to rate products that they have purchased. The date of the rating should be stored.
 - Products are listed on the online marketplace by sellers. When a customer makes a purchase, payment (except for the service's cut) is sent to the seller. A seller should be able to update the 'stock' information of their products.
 - Customers should be able to report products for breaking the site's terms of service (for example, the e-commerce site prohibits false advertising). Each report should be given a unique ID and date.
+- Reports are reviewed by admins. Admins review reports, and can remove products or sellers from the platform.
