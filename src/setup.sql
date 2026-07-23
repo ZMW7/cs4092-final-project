@@ -34,6 +34,7 @@ CREATE TABLE payment_methods (
 
 CREATE TABLE products (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_name VARCHAR(50) NOT NULL,
     stock INTEGER NOT NULL,
     seller_id INTEGER NOT NULL,
     price NUMERIC(10, 2) NOT NULL,
@@ -249,14 +250,15 @@ INSERT INTO addresses       (   country,                    administrative_divis
                             (   'United States of America', 'Illinois',                 'Chicago',              '7949 S Essex Ave',         'APT 1',            '60617-1395',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'minecraftiscool@gmail.com')),
                             (   'India',                    'Telangana',                'Hyderabad',            'Building No. 3-6-276/1 & 277/1 University, Road, Himayatnagar', NULL, '500029', (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jane.doe@example.com')),
                             (   'United States of America', 'Wisconsin',                'Milwaukee',            '220 W Fond Du Lac Ave',    NULL,               '53208-4092',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jim.joe@example.com')),
-                            (   'Hungary',                  NULL,                       'Budapest',             'Kossuth Lajos',            'u. 14-16',         '1053',         (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'friendlygreeter@gmail.com'));
+                            (   'Hungary',                  NULL,                       'Budapest',             'Kossuth Lajos',            'u. 14-16',         '1053',         (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'friendlygreeter@gmail.com')),
+                            (   'United States of America', 'Colorado',                 'Aurora',               '14132 E Colorado Dr',      NULL,               '80012-5912',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'grant@example.com'));
 
 
 INSERT INTO payment_methods (   card_number,        card_expiration,    card_code,  billing_address_id, customer_id) VALUES
 (                               '4111111111111111', '2028-05-01',       123,        1,                  1),
 (                               '5500000000000004', '2027-11-01',       456,        2,                  2),
 (                               '340000000000009',  '2029-02-01',       789,        3,                  3),
-(                               '6011000000000004', '2026-09-01',       321,        4,                  4),
+(                               '6011000000000004', '2026-09-01',       321,        8,                  4),
 (                               '4012888888881881', '2030-03-01',       654,        5,                  5),
 (                               '5105105105105100', '2027-07-01',       987,        6,                  6),
 (                               '4222222222222',    '2028-12-01',       111,        7,                  7),
@@ -280,18 +282,18 @@ VALUES              ('Crest'),
                     ('Cool Guitars LLC');
 
 -- Products
-INSERT INTO products (  stock,  seller_id,  price) 
-VALUES              (   1500,   1,          9.99),
-                    (   4000,   1,          20.00),
-                    (   0,      2,          12.50),
-                    (   85,     2,          6.00),
-                    (   300,    3,          6.99),
-                    (   300,    3,          13.99),
-                    (   300,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'),   123.45),
-                    (   22,     4,          5.00),
-                    (   300,    3,          12.00),
-                    (   12,     1,          1000.00),
-                    (   2,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Cool Guitars LLC'),       500.00);
+INSERT INTO products (  product_name,                   stock,  seller_id,  price) 
+VALUES              (   'Small toothpaste tube',        1500,   1,          9.99),
+                    (   'Lots of toothpaste',           4000,   1,          20.00),
+                    (   '2L Coconut Water',             0,      2,          12.50),
+                    (   '1L Coconut Water',             85,     2,          6.00),
+                    (   'Dune',                         300,    3,          6.99),
+                    (   'The Power Broker',             300,    3,          13.99),
+                    (   'Some illegal product',         300,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'),   123.45),
+                    (   'Some other illegal product',   22,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'),   5.00),
+                    (   'Some 12 dollar product',       300,    3,          12.00),
+                    (   'Some 1000 dollar product',     12,     1,          1000.00),
+                    (   'Cool Guitar 1',                2,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Cool Guitars LLC'),       500.00);
 
 
 -- Moderators
@@ -307,6 +309,7 @@ VALUES              (   1,              1,          9),
                     (   2,              2,          8),
                     (   3,              3,          3),
                     (   4,              4,          10),
+                    (   2,              1,          8),
                     (   5,              6,          7);
 
 -- Product removals
@@ -319,17 +322,41 @@ INSERT INTO seller_removals (   removed_by, seller_id)
 VALUES                      (   3,          (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'));
 
 -- Purchases
-INSERT INTO purchases   (   customer_id,                                                payment_method_id)
+INSERT INTO purchases   (   customer_id,                                                    payment_method_id)
 VALUES                  (   (SELECT DISTINCT id 
                             FROM customers 
-                            WHERE email_address = 'masayoshi.takanaka@takanaka.com'),    6);
+                            WHERE email_address = 'masayoshi.takanaka@takanaka.com'),       6),
+                        (   (SELECT DISTINCT id
+                            FROM customers
+                            WHERE email_address = 'grant@example.com'),                     7),
+                        (   (SELECT DISTINCT id
+                            FROM customers
+                            WHERE email_address = 'grant@example.com'),                     7),
+                        (   (SELECT DISTINCT id
+                            FROM customers
+                            WHERE email_address = 'grant@example.com'),                     7),
+                        (   (SELECT DISTINCT id
+                            FROM customers
+                            WHERE email_address = 'grant@example.com'),                     7),
+                        (   (SELECT DISTINCT id
+                            FROM customers
+                            WHERE email_address = 'grant@example.com'),                     7)
+                            ;
 -- VALUES (6, 6);
 
 -- Product sales
 INSERT INTO product_sales   (   purchase_id,    product_id, price_per_item, quantity) VALUES
                             (   1,              11,         500.00,         1       ),
-                            (   1,              1,          9.99,           4       );
+                            (   1,              1,          9.99,           4       ),
+                            (   2,              2,          20.00,          1       ),
+                            (   3,              3,          12.50,          2       ),
+                            (   4,              4,          6.00,           1       ),
+                            (   5,              5,          6.99,           12      ),
+                            (   6,              6,          13.99,          2       );
 
 -- Deliveries
 INSERT INTO deliveries  (   purchase_id,    address_id,     delivery_status,    shipped_on,     estimated_delivery_time     ) VALUES
-                        (   1,              1,              'delivered',        '2026-06-01',   '2026-06-04 17:00:00+00'    );
+                        (   1,              1,              'delivered',        '2026-06-01',   '2026-06-04 17:00:00+00'    ),
+                        (   2,              8,              'lost',             '2026-06-23',   NULL                        ),
+                        (   4,              8,              'shipping',         '2026-06-23',   '2026-06-30 12:00:00+00'    ),
+                        (   3,              8,              'delivered',        '2026-06-23',   '2026-06-23 17:00:00+00'    );
