@@ -1,6 +1,7 @@
 from customerView import CustomerView
 import psycopg
 import bcrypt
+import sys
 
 DB_PARAMS = {
     "dbname": "company_db",
@@ -41,7 +42,14 @@ def authenticateCustomer():
                 is_valid_password = bcrypt.checkpw(password.encode("utf-8"), stored_hash)
                 if username == row[0] and is_valid_password:
                     print("Customer is authenticated")
-                    customer_view = CustomerView(username, cur)
+                    customer_view = CustomerView(username, conn, cur)
+                    try:
+                        customer_view.beginInteraction(conn, cur)
+                    except KeyboardInterrupt:
+                        customer_view.removeAllItemsFromCart(conn, cur)
+                        conn.close()
+                        cur.close()
+                        sys.exit(0)
                     login_success = True
                     return
             conn.close()
