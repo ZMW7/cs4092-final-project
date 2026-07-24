@@ -225,12 +225,13 @@ INSERT INTO customers       (   email_address,          password_hash)
 VALUES                      (   'governor@ohio.gov',    '$2a$12$5GlVmholEAkJ1D8dMPNxLeOVQioEdDU463.qukzNMK/X40h3UeYUO');
 
 INSERT INTO customers   (email_address,                         password_hash)
-VALUES                  ('masayoshi.takanaka@takanaka.com',     '$2a$12$JqlCLqHJtIoJKZHoHg6y9eCBdcUxH0b7hz9oxswuNTkjBYfuH2ete');
+VALUES                  ('masayoshi.takanaka@takanaka.com',     '$2a$12$UEykOXseO3UtE5L29NuaE.cfJLVJpzRFDeWJkY/i9VLki0lyBLFxG'); -- Password: takanaka
 
 INSERT INTO customers   (email_address,                         password_hash)
 VALUES                  ('minecraftiscool@gmail.com',           '$2a$12$JqlCLqHJtIoJKZHoHg6y9eCBdcUxH0b7hz9oxswuNTkjBYfuH2ete'),
                         ('amongusiscool@gmail.com',             '$2a$12$fUNEeYsGvcdP5vQ3Sw/N2Owu52oMB0g5vNSs02kuzUIsgrV5vlpuq'),
-                        ('friendlygreeter@gmail.com',           '$2a$12$KWA.ucO/YKflNcOJeCAPMOniKk0Y/K0xrLz7U/nuK4xkFIo0TiUI.');
+                        ('friendlygreeter@gmail.com',           '$2a$12$KWA.ucO/YKflNcOJeCAPMOniKk0Y/K0xrLz7U/nuK4xkFIo0TiUI.'),
+                        ('a@b.com',                             '$2a$12$peD6mdrsmjhdFpgDjx9B9uDtuISlAc9uarS3v2xqYUlsadHWYdhem'); -- Pasword: test
 
 INSERT INTO customers       (   email_address,          password_hash) 
 VALUES                      (   'primeminister@uk.gov', '$2a$12$gxPPc.V/70vD9ZkuykgB6uJyxct68nBkb8kVBATDmsiPlKwY4Zqra')
