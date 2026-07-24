@@ -19,7 +19,7 @@ class CustomerView:
         user_options = [["p", "c"]]
         should_continue = True
         while (should_continue):
-            print(tabulate(user_options, user_option_headers, tablefmt = "grid"))
+            print(tabulate(user_options, user_option_headers, tablefmt = "fancy_grid"))
             user_input = input()
             match user_input:
                 case 'p' | 'P':
@@ -49,7 +49,7 @@ class CustomerView:
             product_id = (int)(input("Enter the product ID of the product to remove from your cart: "))
             quantity_str = input("quantity to remove (leave blank for all): ")
             quantity = 0
-            query = sql.SQL("SELECT product_name, stock FROM products WHERE id = %s")
+            query = sql.SQL("SELECT product_name FROM products WHERE id = %s")
             cur.execute(query, (product_id,))
 
             # If the product does not exist, notify the user and return to the previous page
@@ -63,7 +63,7 @@ class CustomerView:
                 print(f"current cart: {self._cart.items()}")
                 return previous_page
 
-            product_name, stock = product_rows[0]
+            product_name = product_rows[0]
 
             if (quantity_str == ""):
                 quantity = self._cart[product_id]
@@ -91,6 +91,8 @@ class CustomerView:
 
             cur.execute(update_query_str, (quantity, product_id,))
             conn.commit()
+
+            print(f"Sucessfully removed '{product_name}' from cart.")
             return previous_page
             
         except ValueError:
@@ -167,7 +169,7 @@ class CustomerView:
             product_name = row[1]
             table_contents.append([product_id, product_name, self._cart[product_id]])
 
-        print(tabulate(table_contents, headers=table_headings, tablefmt="grid"))
+        print(tabulate(table_contents, headers=table_headings, tablefmt="fancy_grid"))
 
         # Showing the next options
         return
@@ -182,8 +184,8 @@ class CustomerView:
         """
         cur.execute(query)
         product_rows = cur.fetchall()
-        print("Products:")
-        print(tabulate(product_rows, headers = ["ID", "Name", "Stock", "Seller", "Price"], tablefmt="grid"))
+        print("\nProducts:")
+        print(tabulate(product_rows, headers = ["ID", "Name", "Stock", "Seller", "Price"], tablefmt="fancy_grid"))
 
         # Presenting customer options   
         user_options = [
