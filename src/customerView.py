@@ -47,6 +47,12 @@ class DeliveryEntry(NamedTuple):
     shipped_on: dtdate | None
     estimated_delivery_time: datetime | None
 
+class RatingEntry(NamedTuple):
+    customer_id: int
+    product_id: int
+    rating: int
+    created_at: datetime
+
 class PurchaseHistoryEntry(NamedTuple):
     purchase: PurchaseEntry
     deliveries: dict[int, tuple[DeliveryEntry, str]]
@@ -692,7 +698,8 @@ class CustomerView:
 
         # Nice! Now we have the payment method, and the address to ship to.
         purchase = self.empty_cart_and_create_purchase(payment_method)
-        self.create_delivery_for_purchase(purchase, shipping_address)
+        if (purchase != None):
+            self.create_delivery_for_purchase(purchase, shipping_address)
         
         return True
 
@@ -944,14 +951,97 @@ class CustomerView:
         
         return True
 
+    def get_customer_rating_and_rate_product(self, product_id: int | None = None, rating: int | None = None) -> RatingEntry:
+        """
+        Gets rating from user input and adds rating of a given product
+        to the database.
+
+        Parameters
+        -------
+            product_id: int
+                The ID of the product being rated
+                
+        Returns
+        ------- 
+            RatingEntry
+                The newly created rating
+        """
+
+        # If the product_id is not given, get it from user input
+        while (product_id == None):
+            product_id_str = input("Please enter the product ID: ")
+            try:
+                product_id = int(product_id_str)
+            except ValueError:
+                print("Invalid product id. Please try again.")
+                product_id = None
+
+        # Verify the database has a product with the given id
+        # self.cur.execute(sql.SQL("SELECT name FROM products INNER JOIN  id = %s"), (product_id,))
+        product_selection_query = sql.SQL("""
+            SELECT DISTINCT p.product_name
+            FROM products as p
+            INNER JOIN product_sales as s 
+                ON s.product_id = p.id AND p.id = %s
+            INNER JOIN purchases 
+                ON s.purchase_id = purchases.id AND purchases.customer_id = %s
+        """)
+        self.cur.execute(product_selection_query, (product_id, self._customer_id,))
+        result_rows = self.cur.fetchall()
+        if (len(result_rows) != 1):
+            print("You can only rate products that you have purchased.")
+            return None
+
+        # Getting rating if not given
+        number_of_rating_attempts = 0
+        while (rating == None):
+            rating_str = input("Please enter a rating for the product (1 through 10): ")
+            if (number_of_rating_attempts > 4 and rating_str == 'x'):
+                return None
+            number_of_rating_attempts += 1
+            try:
+                if (number_of_rating_attempts > 4):
+                    print("Press x to exit the rating menu.")
+                rating = int(rating_str)
+                if not (0 < rating <= 10):
+                    print("Invalid rating.", end=" ")
+            except ValueError:
+                print("Invalid rating.", end=" ")
+
+        # Add a rating to the database
+        self.cur.execute(sql.SQL("""
+            INSERT INTO ratings (customer_id, product_id, rating) VALUES
+            (%(customer_id)s, %(product_id)s, %(rating)s)
+            ON CONFLICT (customer_id, product_id)
+            DO UPDATE SET rating = %(rating)s
+            RETURNING created_at
+            """),
+            {
+                "customer_id": self._customer_id, 
+                "product_id": product_id, 
+                "rating": rating
+            }
+        )
+        self.conn.commit()
+        print(f"Successfully rated {result_rows[0][0]} {rating}")
+        return RatingEntry(
+            customer_id=self._customer_id,
+            product_id=product_id,
+            rating=rating,
+            created_at=self.cur.fetchall()[0][0]
+        )
+
     def list_products(self):
         # Getting the products
         query = """
-            SELECT p.id, p.product_name, p.stock, s.seller_name,  AVG(r.rating) as average_rating, p.price
+            SELECT p.id, p.product_name, p.stock, s.seller_name, r.average_rating, p.price
             FROM products as p
             JOIN sellers as s ON p.seller_id = s.id
-            JOIN ratings as r ON r.product_id = s.id
-            GROUP BY p.id, p.stock, s.seller_name
+            FULL OUTER JOIN (
+                SELECT r.product_id, AVG(r.rating) as average_rating
+                FROM ratings as r
+                GROUP BY r.product_id
+            ) as r ON r.product_id = p.id
             ;
         """
         self.cur.execute(query)
@@ -989,7 +1079,8 @@ class CustomerView:
                 next_page()
             case 'd' | 'D':
                 # Rate
-                return False
+                self.get_customer_rating_and_rate_product()
+                return True
             case 'r' | 'R':
                 return False
             case 'v' | 'V':
