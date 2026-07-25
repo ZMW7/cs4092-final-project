@@ -3,7 +3,7 @@ from tabulate import tabulate
 from collections.abc import Callable
 from decimal import Decimal
 from typing import NamedTuple
-from datetime import datetime
+from datetime import datetime as datetime, date as dtdate
 import itertools
 
 class AddressEntry(NamedTuple):
@@ -36,6 +36,14 @@ class ProductSalesEntry(NamedTuple):
     product_id: int
     price_per_item: Decimal
     quantity: int
+
+class DeliveryEntry(NamedTuple):
+    id: int
+    purchase_id: int
+    address_id: int
+    delivery_status: str | None
+    shipped_on: dtdate | None
+    estimated_delivery_time: datetime | None
 
 class CustomerView:
 
@@ -417,6 +425,62 @@ class CustomerView:
             customer_id=self._customer_id
         )
 
+    def createDeliveryForPurchase(self, conn: Connection, cur: cursor.Cursor, purchase: PurchaseEntry, address: AddressEntry) -> DeliveryEntry:
+        # Defining the query
+        cur.execute("""
+            INSERT INTO deliveries (purchase_id, address_id) VALUES
+            (%s, %s)
+            RETURNING id, delivery_status
+            """,
+            (purchase.id, address.id,)
+        )
+        delivery_id = None
+        delivery_status = None
+        try:
+            delivery_id, delivery_status = cur.fetchall()[0]
+        except:
+            print(f"Error getting delivery id and status for purchase {purchase.id}. Please try again later.\nIf the issue persists, contact customer support.")
+            return
+        conn.commit()
+
+        delivery: DeliveryEntry = DeliveryEntry(
+            id=delivery_id,
+            purchase_id=purchase.id,
+            address_id=address.id,
+            delivery_status=delivery_status,
+            shipped_on=None,
+            estimated_delivery_time=None
+        )
+        return delivery
+
+    def getDeliveriesById(self, conn: Connection, cur: cursor.Cursor, delivery_ids: list[int]):
+        delivery_query_str: str = """
+            SELECT *
+            FROM deliveries
+            WHERE id = 
+        """
+        for i in range(len(delivery_ids)):
+            delivery_query_str += "%s"
+            if (i < len(delivery_ids) - 1):
+                delivery_query_str += "OR id = "
+
+        cur.execute(delivery_query_str, tuple(delivery_ids))
+        delivery_rows = cur.fetchall()
+        if (len(delivery_rows) == 0):
+            return list()
+        deliveries = list()
+        for row in delivery_rows:
+            deliveries.append(DeliveryEntry(
+                id=row[0],
+                purchase_id=row[1],
+                address_id=row[2],
+                delivery_status=row[3],
+                shipped_on=row[4],
+                estimated_delivery_time=row[5]
+            ))
+        return deliveries
+
+
     def emptyCartAndCreatePurchase(self, conn: Connection, cur: cursor.Cursor, paymentMethod: PaymentMethodEntry) -> PurchaseEntry:
         """
         Empties all items from the cart, adds a purchase to the database,
@@ -535,6 +599,7 @@ class CustomerView:
         self._cart = dict()
 
         print("Purchase complete! ✅")
+
         return purchase
 
     def displayCheckoutOptions(self, conn: Connection, cur: cursor.Cursor) -> bool:
