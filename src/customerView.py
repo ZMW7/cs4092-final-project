@@ -58,8 +58,8 @@ class CustomerView:
         self.showMenu(conn, cur)
 
     def showMenu(self, conn, cur):
-        user_option_headers = ["Browse Products", "Checkout", "Settings", "Sign Out"]
-        user_options = [["p", "c", "x"]]
+        user_option_headers = ["Browse Products", "Checkout", "My Purchases", "Settings", "Sign Out"]
+        user_options = [["p", "c", "h", "s" "x"]]
         should_continue = True
         while (should_continue):
             print(tabulate(user_options, user_option_headers, tablefmt = "fancy_grid"))
@@ -71,6 +71,9 @@ class CustomerView:
                 case 'c' | 'C':
                     # Checkout
                     should_continue = self.displayCheckoutOptions(conn, cur)
+                case 'h' | 'H':
+                    # My purchases
+                    should_continue = self.displayPurchaseHistory(conn, cur)
                 case 's' | 'S':
                     # Settings
                     should_continue = False
@@ -754,7 +757,13 @@ class CustomerView:
 
         # Showing the next options
         return
-        
+
+    def displayPurchaseHistory(self, conn: Connection, cur: cursor.Cursor) -> bool:
+        # Defining the query
+        purchase_history_query = """
+            
+        """
+        return False
 
     def listProducts(self, conn, cur: cursor.Cursor):
         # Getting the products
