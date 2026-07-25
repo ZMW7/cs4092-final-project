@@ -62,7 +62,9 @@ class CustomerView:
     # Cart dict:
     # product id: [quantity]
 
-    def __init__(self, username, conn, cur: cursor.Cursor):
+    def __init__(self, username, conn: Connection, cur: cursor.Cursor):
+        self.conn = conn
+        self.cur = cur
         print(f"Welcome, {username}")
         self._username = username
         # Getting the customer ID
@@ -73,11 +75,11 @@ class CustomerView:
             raise ValueError(f"Error: customer id has {len(customer_rows)} matches, expected 1.")
         self._customer_id = customer_rows[0][0]
 
-    def begin_interaction(self, conn, cur):
+    def begin_interaction(self):
         self._cart = dict()
-        self.show_menu(conn, cur)
+        self.show_menu()
 
-    def show_menu(self, conn, cur):
+    def show_menu(self):
         user_option_headers = ["Browse Products", "Checkout", "My Purchases", "Settings", "Sign Out"]
         user_options = [["p", "c", "h", "s", "x"]]
         should_continue = True
@@ -87,13 +89,13 @@ class CustomerView:
             match user_input:
                 case 'p' | 'P':
                     # Browse products
-                    should_continue = self.list_products(conn, cur)
+                    should_continue = self.list_products()
                 case 'c' | 'C':
                     # Checkout
-                    should_continue = self.display_checkout_options(conn, cur)
+                    should_continue = self.display_checkout_options()
                 case 'h' | 'H':
                     # My purchases
-                    should_continue = self.display_purchase_history(conn, cur, 0)
+                    should_continue = self.display_purchase_history(0)
                 case 's' | 'S':
                     # Settings
                     should_continue = False
@@ -102,20 +104,20 @@ class CustomerView:
                 case _:
                     pass
         if (len(self._cart.items()) > 0):
-            self.remove_all_items_from_cart(conn, cur)
+            self.remove_all_items_from_cart()
         print("See ya! 👋")
 
-    def remove_all_items_from_cart(self, conn: Connection, cur: cursor.Cursor):
+    def remove_all_items_from_cart(self):
         print("\nRemoving all items from cart...")
         query = ""
         items_list = list(self._cart.items())
-        cur.executemany(
+        self.cur.executemany(
             "UPDATE products SET stock = stock + %s WHERE id = %s",
             items_list
         )
-        conn.commit()
+        self.conn.commit()
 
-    def display_new_address_input_options_and_add_to_database(self, conn: Connection, cur: cursor.Cursor) -> AddressEntry:
+    def display_new_address_input_options_and_add_to_database(self) -> AddressEntry:
         print("\nNew Address")
 
         country = input("Country: ")
@@ -152,7 +154,7 @@ class CustomerView:
             line2 = None
 
         # Adding new address to database
-        cur.execute(
+        self.cur.execute(
             """
                 INSERT INTO addresses (country, administrative_division, city, line1, line2, postal_code, customer_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -160,10 +162,10 @@ class CustomerView:
             """,
             (country, administrative_division, city, line1, line2, postal_code, self._customer_id)
         )
-        conn.commit()
+        self.conn.commit()
 
         # Getting the address ID of the new address
-        rows = cur.fetchall()
+        rows = self.cur.fetchall()
         if (len(rows) != 1):
             raise ValueError(f"Expected 1 row, got {len(rows)}")
         address_id = rows[0][0]
@@ -172,7 +174,7 @@ class CustomerView:
         match user_response:
             case 'y' | 'Y' | '':
                 print("Updating preferred address...", end='\r', flush=True)
-                cur.execute(
+                self.cur.execute(
                     """
                     UPDATE customers
                     SET primary_address_id = %s
@@ -180,7 +182,7 @@ class CustomerView:
                     """,
                     (address_id, self._customer_id,)
                 )
-                conn.commit()
+                self.conn.commit()
                 print("Preferred address updated!   ")
 
         return AddressEntry(
@@ -194,15 +196,15 @@ class CustomerView:
             customer_id=self._customer_id
         )
 
-    def prompt_user_to_select_address(self, conn: Connection, cur: cursor.Cursor) -> AddressEntry:
+    def prompt_user_to_select_address(self) -> AddressEntry:
         print("\nRetreiving addresses...", end='\r', flush=True)
         # Retreiving payment methods
-        cur.execute(
+        self.cur.execute(
             "SELECT * FROM addresses WHERE customer_id = %s",
             (self._customer_id,)
         )
         print("Addresses              ")
-        address_rows = cur.fetchall()
+        address_rows = self.cur.fetchall()
         address_options = list()
         address = None
         if (len(address_rows) > 0):
@@ -226,7 +228,7 @@ class CustomerView:
                 print("Invalid selection.", end=" ")
 
         if (new_address_selection_number == selection_number):
-            address = self.display_new_address_input_options_and_add_to_database(conn, cur)
+            address = self.display_new_address_input_options_and_add_to_database()
         else:
             address = AddressEntry(
                 id=address_rows[selection_number-1][0],
@@ -240,28 +242,26 @@ class CustomerView:
             )
         return address
 
-    def update_preferred_payment_method(self, conn: Connection, cur: cursor.Cursor, payment_id: int):
+    def update_preferred_payment_method(self, payment_id: int):
         print(f"Updating preferred payment method to id {payment_id}")
-        cur.execute("""
+        self.cur.execute("""
             UPDATE customers
             SET preferred_payment_id = %s
             WHERE id = %s
         """,
         (payment_id, self._customer_id,))
-        conn.commit()
+        self.conn.commit()
 
 
-    def display_new_payment_method_input_options_and_add_payment_method(self, conn: Connection, cur: cursor.Cursor, billing_address = None) -> PaymentMethodEntry:
+    def display_new_payment_method_input_options_and_add_payment_method(self, billing_address: AddressEntry = None) -> PaymentMethodEntry:
         """
         Prompts the user to enter information for a new payment method 
         and adds the newly created payment method to the database.
 
         Parameters
         -------
-        conn : Connection
-            The connection to the database
-        cur : cursor.Cursor
-            The current cursor
+        billing_address: AddressEntry | None
+            The billing address of the payment method
         
         Returns
         ------- 
@@ -309,24 +309,24 @@ class CustomerView:
                     billing_address = None
                     pass
         if (billing_address == None):
-            billing_address = self.prompt_user_to_select_address(conn, cur)
+            billing_address = self.prompt_user_to_select_address()
 
         # Adding the newly created payment method to the database
-        cur.execute("""
+        self.cur.execute("""
             INSERT INTO payment_methods (card_number, card_expiration, card_code, billing_address_id, customer_id) VALUES
             (%s, %s, %s, %s, %s)
             RETURNING id
         """,
         (card_number, card_expiration, card_code, billing_address.id, self._customer_id,)
         )
-        conn.commit()
-        result_rows = cur.fetchall()
+        self.conn.commit()
+        result_rows = self.cur.fetchall()
         payment_id = result_rows[0][0]
 
         user_response = input("Would you like to make this your preferred payment method? (y/n, blank is y)")
         match user_response:
             case 'y' | 'Y' | '':
-                self.update_preferred_payment_method(conn, cur, payment_id)
+                self.update_preferred_payment_method(payment_id)
 
         return PaymentMethodEntry(
             id=payment_id,
@@ -337,16 +337,16 @@ class CustomerView:
             customer_id=self._customer_id
         )
 
-    def prompt_user_to_select_payment_method(self, conn: Connection, cur: cursor.Cursor) -> PaymentMethodEntry:
+    def prompt_user_to_select_payment_method(self) -> PaymentMethodEntry:
         # Checking to see if user has a primary address
         primary_address = None
-        cur.execute("""
+        self.cur.execute("""
             SELECT a.*
             FROM addresses as a
             INNER JOIN customers as c ON c.primary_address_id = a.id AND c.id = %s
         """,
         (self._customer_id,))
-        result_rows = cur.fetchall()
+        result_rows = self.cur.fetchall()
         if (len(result_rows) == 1):
             primary_address = AddressEntry(
                 id=result_rows[0][0],
@@ -366,8 +366,8 @@ class CustomerView:
             return
 
         # Getting payment methods
-        cur.execute("SELECT * FROM payment_methods WHERE customer_id = %s", (self._customer_id,))
-        payment_method_rows = cur.fetchall()
+        self.cur.execute("SELECT * FROM payment_methods WHERE customer_id = %s", (self._customer_id,))
+        payment_method_rows = self.cur.fetchall()
         selection_table_headings = ['No.', 'Payment Method']
         selection_table_entries = list()
         for index, payment_method_row in enumerate(payment_method_rows):
@@ -398,7 +398,7 @@ class CustomerView:
         new_payment_method_selection_number = len(selection_table_entries)
         payment_method = None
         if (new_payment_method_selection_number == user_selection):
-            payment_method = self.display_new_payment_method_input_options_and_add_payment_method(conn, cur, primary_address)
+            payment_method = self.display_new_payment_method_input_options_and_add_payment_method(primary_address)
         else:
             payment_method = PaymentMethodEntry(
                 id=payment_method_rows[user_selection - 1][0],
@@ -412,15 +412,15 @@ class CustomerView:
         return payment_method
 
 
-    def get_primary_address(self, conn: Connection, cur: cursor.Cursor) -> AddressEntry:
+    def get_primary_address(self) -> AddressEntry:
         # Getting the primary address for the customer
-        cur.execute("""
+        self.cur.execute("""
             SELECT a.*
             FROM addresses as a
             INNER JOIN customers as c ON c.primary_address_id = a.id AND c.id = %s
         """,
         (self._customer_id,))
-        result_rows = cur.fetchall()
+        result_rows = self.cur.fetchall()
         if (len(result_rows) != 1):
             print("No primary address found")
             return None
@@ -437,9 +437,9 @@ class CustomerView:
             customer_id=self._customer_id
         )
 
-    def create_delivery_for_purchase(self, conn: Connection, cur: cursor.Cursor, purchase: PurchaseEntry, address: AddressEntry) -> DeliveryEntry:
+    def create_delivery_for_purchase(self, purchase: PurchaseEntry, address: AddressEntry) -> DeliveryEntry:
         # Defining the query
-        cur.execute("""
+        self.cur.execute("""
             INSERT INTO deliveries (purchase_id, address_id) VALUES
             (%s, %s)
             RETURNING id, delivery_status
@@ -449,11 +449,11 @@ class CustomerView:
         delivery_id = None
         delivery_status = None
         try:
-            delivery_id, delivery_status = cur.fetchall()[0]
+            delivery_id, delivery_status = self.cur.fetchall()[0]
         except:
             print(f"Error getting delivery id and status for purchase {purchase.id}. Please try again later.\nIf the issue persists, contact customer support.")
             return
-        conn.commit()
+        self.conn.commit()
 
         delivery: DeliveryEntry = DeliveryEntry(
             id=delivery_id,
@@ -465,7 +465,7 @@ class CustomerView:
         )
         return delivery
 
-    def get_deliveries_by_id(self, conn: Connection, cur: cursor.Cursor, delivery_ids: list[int]):
+    def get_deliveries_by_id(self, delivery_ids: list[int]):
         delivery_query_str: str = """
             SELECT *
             FROM deliveries
@@ -476,8 +476,8 @@ class CustomerView:
             if (i < len(delivery_ids) - 1):
                 delivery_query_str += "OR id = "
 
-        cur.execute(delivery_query_str, (delivery_ids))
-        delivery_rows = cur.fetchall()
+        self.cur.execute(delivery_query_str, (delivery_ids))
+        delivery_rows = self.cur.fetchall()
         if (len(delivery_rows) == 0):
             return list()
         deliveries = list()
@@ -493,17 +493,15 @@ class CustomerView:
         return deliveries
 
 
-    def empty_cart_and_create_purchase(self, conn: Connection, cur: cursor.Cursor, paymentMethod: PaymentMethodEntry) -> PurchaseEntry:
+    def empty_cart_and_create_purchase(self, paymentMethod: PaymentMethodEntry) -> PurchaseEntry:
         """
         Empties all items from the cart, adds a purchase to the database,
         adds a product sale for each purchased product to the database.
 
         Parameters
         -------
-        conn : Connection
-            The connection to the database
-        cur : cursor.Cursor
-            The current cursor
+        paymentMethod : PaymentMethodEntry
+            The payment method being used in the purchase.
         
         Returns
         ------- 
@@ -522,16 +520,16 @@ class CustomerView:
         total_cost = Decimal(0.00)
 
         # Creating the purchase
-        cur.execute("""
+        self.cur.execute("""
             INSERT INTO purchases (customer_id, payment_method_id) VALUES
             (%s, %s)
             RETURNING id, created_at
             """,
             (self._customer_id, paymentMethod.id,)
         )
-        conn.commit()
+        self.conn.commit()
         try:
-            result = cur.fetchall()
+            result = self.cur.fetchall()
             purchase_id = int(result[0][0])
             created_at = result[0][1]
         except ValueError as e:
@@ -556,8 +554,8 @@ class CustomerView:
         product_names_query += ")"
 
         # Executing the query
-        cur.execute(product_names_query)
-        product_rows = cur.fetchall()
+        self.cur.execute(product_names_query)
+        product_rows = self.cur.fetchall()
         if (len(product_rows) != number_of_unique_items_in_cart):
             raise ValueError(f"Expected {number_of_unique_items_in_cart} items, got {len(product_rows)} from database.")
 
@@ -599,10 +597,10 @@ class CustomerView:
         sale_insertions_query += " RETURNING id"
 
         flattened_sale_insertions_query_values: tuple = tuple(itertools.chain.from_iterable(sale_insertions_query_values))
-        cur.execute(sale_insertions_query, flattened_sale_insertions_query_values)
-        conn.commit()
-        # sale_ids = [row[0] for row in cur.fetchall()]
-        insertion_rows = cur.fetchall()
+        self.cur.execute(sale_insertions_query, flattened_sale_insertions_query_values)
+        self.conn.commit()
+        # sale_ids = [row[0] for row in self.cur.fetchall()]
+        insertion_rows = self.cur.fetchall()
         for index, row in enumerate(insertion_rows):
             # product_sales[index].id = row[0]
             product_sales[index] = product_sales[index]._replace(id=row[0])
@@ -614,11 +612,11 @@ class CustomerView:
 
         return purchase
 
-    def display_checkout_options(self, conn: Connection, cur: cursor.Cursor) -> bool:
+    def display_checkout_options(self) -> bool:
         print("\n===== Checkout =====")
         self.display_current_cart
 
-        shipping_address = self.get_primary_address(conn, cur)
+        shipping_address = self.get_primary_address()
         print("== Shipping Information ==")
         if (shipping_address != None):
             user_response = input(f"Would you like to ship to your primary address {shipping_address.line1}?\n(y/n, blank is y): ")
@@ -629,7 +627,7 @@ class CustomerView:
                     shipping_address = None
 
         if (shipping_address == None):
-            shipping_address = self.prompt_user_to_select_address(conn, cur)
+            shipping_address = self.prompt_user_to_select_address()
 
         # Getting the saved billing information
         primary_payment_method_query = sql.SQL("""
@@ -649,14 +647,14 @@ class CustomerView:
             INNER JOIN customers as c ON c.preferred_payment_id = p.id AND c.id = %s
             INNER JOIN addresses as a ON a.id = p.billing_address_id;
         """)
-        cur.execute(primary_payment_method_query, (self._customer_id,))
+        self.cur.execute(primary_payment_method_query, (self._customer_id,))
 
         payment_method = None
-        result_rows = cur.fetchall()
+        result_rows = self.cur.fetchall()
         if (len(result_rows) < 1):
             # The customer has no primary payment method
             print("It seems you don't have a preferred payment method.") # TODO: Remove this print statement
-            payment_method = self.prompt_user_to_select_payment_method(conn, cur)
+            payment_method = self.prompt_user_to_select_payment_method()
         else:
             payment_method_id, card_number, card_expiration, card_code, billing_address_id, country, administrative_division, city, line1, line2, postal_code = result_rows[0]
             card_expiration = None
@@ -690,27 +688,27 @@ class CustomerView:
                 case 'y' | 'Y' | '':
                     pass
                 case _:
-                    payment_method = self.prompt_user_to_select_payment_method(conn, cur)
+                    payment_method = self.prompt_user_to_select_payment_method()
 
         # Nice! Now we have the payment method, and the address to ship to.
-        purchase = self.empty_cart_and_create_purchase(conn, cur, payment_method)
-        self.create_delivery_for_purchase(conn, cur, purchase, shipping_address)
+        purchase = self.empty_cart_and_create_purchase(payment_method)
+        self.create_delivery_for_purchase(purchase, shipping_address)
         
         return True
 
-    def display_remove_from_cart_options(self, conn: Connection, cur: cursor.Cursor, previous_page: Callable):
+    def display_remove_from_cart_options(self, previous_page: Callable):
         try:
             print("\nRemoving items from cart")
-            self.display_current_cart(conn, cur)
+            self.display_current_cart()
 
             product_id = (int)(input("Enter the product ID of the product to remove from your cart: "))
             quantity_str = input("quantity to remove (leave blank for all): ")
             quantity = 0
             query = sql.SQL("SELECT product_name FROM products WHERE id = %s")
-            cur.execute(query, (product_id,))
+            self.cur.execute(query, (product_id,))
 
             # If the product does not exist, notify the user and return to the previous page
-            product_rows = cur.fetchall()
+            product_rows = self.cur.fetchall()
             if (len(product_rows) < 1):
                 print("Invalid product ID, please try again.")
                 return previous_page
@@ -746,8 +744,8 @@ class CustomerView:
                 WHERE id = %s
             """
 
-            cur.execute(update_query_str, (quantity, product_id,))
-            conn.commit()
+            self.cur.execute(update_query_str, (quantity, product_id,))
+            self.conn.commit()
 
             print(f"Sucessfully removed '{product_name}' from cart.")
             return previous_page
@@ -756,16 +754,16 @@ class CustomerView:
             print("Invalid input, please try again")
             return previous_page
 
-    def display_add_to_cart_options(self, conn: Connection, cur: cursor.Cursor, previous_page: Callable[[cursor.Cursor], None]):
+    def display_add_to_cart_options(self, previous_page: Callable[[cursor.Cursor], None]):
         try:
             product_id = int(input("Enter the product ID of the product to add: "))
             quantity = int(input("quantity: "))
 
             query = sql.SQL("SELECT product_name, stock, price FROM products WHERE id = %s")
-            cur.execute(query, (product_id,))
+            self.cur.execute(query, (product_id,))
 
             # If the product ID is invalid, notify user and return to previous page
-            product_rows = cur.fetchall()
+            product_rows = self.cur.fetchall()
             if (len(product_rows) != 1):
                 print("Invalid product ID")
                 return previous_page
@@ -784,8 +782,8 @@ class CustomerView:
                 WHERE id = %s
             """
                 
-            cur.execute(update_query_str, (quantity, product_id,))
-            conn.commit()
+            self.cur.execute(update_query_str, (quantity, product_id,))
+            self.conn.commit()
 
             # Updating cart
             if (product_id in self._cart.keys()):
@@ -798,7 +796,7 @@ class CustomerView:
             print("Invalid input, please try again.")
             return previous_page
 
-    def display_current_cart(self, conn: Connection, cur: cursor.Cursor):
+    def display_current_cart(self):
         print("Current cart: ")
         table_headings = ["Product ID", "Product Name", "Count", "Price"]
 
@@ -818,8 +816,8 @@ class CustomerView:
         product_names_query += ")"
 
         # Executing the query, printing the table
-        cur.execute(product_names_query)
-        product_rows = cur.fetchall()
+        self.cur.execute(product_names_query)
+        product_rows = self.cur.fetchall()
         table_contents = list()
         total_price = Decimal(0.00)
         for row in product_rows:
@@ -836,7 +834,7 @@ class CustomerView:
         # Showing the next options
         return
 
-    def display_purchase_history(self, conn: Connection, cur: cursor.Cursor, offset: int = 0) -> bool:
+    def display_purchase_history(self, offset: int = 0) -> bool:
         # Defining the query
         # The query gets every delivery, as well as the associated purchase of each delivery
         # The query should also get the items in each delivery
@@ -855,10 +853,10 @@ class CustomerView:
                 LIMIT 25
                 OFFSET %s
             """)
-            cur.execute(purchase_history_query, (self._customer_id, offset,))
+            self.cur.execute(purchase_history_query, (self._customer_id, offset,))
 
             # Filling the local purchase history
-            result_rows = cur.fetchall()
+            result_rows = self.cur.fetchall()
 
             for result_row in result_rows:
                 purchase: PurchaseEntry = PurchaseEntry(
@@ -946,7 +944,7 @@ class CustomerView:
         
         return True
 
-    def list_products(self, conn, cur: cursor.Cursor):
+    def list_products(self):
         # Getting the products
         query = """
             SELECT p.id, p.product_name, p.stock, s.seller_name,  AVG(r.rating) as average_rating, p.price
@@ -956,8 +954,8 @@ class CustomerView:
             GROUP BY p.id, p.stock, s.seller_name
             ;
         """
-        cur.execute(query)
-        product_rows = cur.fetchall()
+        self.cur.execute(query)
+        product_rows = self.cur.fetchall()
         for index, product_row in enumerate(product_rows):
             product_rows[index] = (
                 product_row[0],
@@ -983,12 +981,12 @@ class CustomerView:
         match user_input:
             case 'a' | 'A':
                 # Add to cart
-                next_page = self.display_add_to_cart_options(conn, cur, self.list_products)
-                next_page(conn, cur)
+                next_page = self.display_add_to_cart_options(self.list_products)
+                next_page()
             case 's' | 'S':
                 # Remove from Cart
-                next_page = self.display_remove_from_cart_options(conn, cur, self.list_products)
-                next_page(conn, cur)
+                next_page = self.display_remove_from_cart_options(self.list_products)
+                next_page()
             case 'd' | 'D':
                 # Rate
                 return False
@@ -996,11 +994,11 @@ class CustomerView:
                 return False
             case 'v' | 'V':
                 # View cart
-                self.display_current_cart(conn, cur)
+                self.display_current_cart()
                 return True
             case 'c' | 'C':
                 # Checkout
-                self.display_checkout_options(conn, cur)
+                self.display_checkout_options()
                 return True
             
         return True

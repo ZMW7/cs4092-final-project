@@ -44,9 +44,9 @@ def authenticateCustomer():
                     print("Customer is authenticated")
                     customer_view = CustomerView(username, conn, cur)
                     try:
-                        customer_view.begin_interaction(conn, cur)
+                        customer_view.begin_interaction()
                     except KeyboardInterrupt:
-                        customer_view.remove_all_items_from_cart(conn, cur)
+                        customer_view.remove_all_items_from_cart()
                         conn.close()
                         cur.close()
                         sys.exit(0)
