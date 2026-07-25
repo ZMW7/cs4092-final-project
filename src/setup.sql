@@ -105,7 +105,7 @@ CREATE TABLE deliveries (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     purchase_id INTEGER NOT NULL,
     address_id INTEGER NOT NULL,
-    delivery_status varchar(63),
+    delivery_status varchar(63) DEFAULT 'processing',
     shipped_on DATE,
     estimated_delivery_time TIMESTAMPTZ
 );
