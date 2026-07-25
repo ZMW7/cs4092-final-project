@@ -1,6 +1,27 @@
 from psycopg import cursor, sql, Connection
 from tabulate import tabulate
 from collections.abc import Callable
+from decimal import Decimal
+from typing import NamedTuple
+from datetime import datetime
+
+class AddressEntry(NamedTuple):
+    id: int
+    country: str
+    administrative_division: str | None
+    city: str
+    line1: str
+    line2: str | None
+    postal_code: str
+    customer_id: int
+
+class PaymentMethodEntry(NamedTuple):
+    id: int
+    card_number: str
+    card_expiration: datetime
+    card_code: int
+    billing_address_id: int
+    customer_id: int
 
 class CustomerView:
 
@@ -9,26 +30,42 @@ class CustomerView:
 
     def __init__(self, username, conn, cur: cursor.Cursor):
         print(f"Welcome, {username}")
+        self._username = username
+        # Getting the customer ID
+        customer_id_query = sql.SQL("SELECT id FROM customers WHERE email_address = %s")
+        cur.execute(customer_id_query, (username,))
+        customer_rows = cur.fetchall()
+        if (len(customer_rows) != 1):
+            raise ValueError(f"Error: customer id has {len(customer_rows)} matches, expected 1.")
+        self._customer_id = customer_rows[0][0]
 
     def beginInteraction(self, conn, cur):
         self._cart = dict()
         self.showMenu(conn, cur)
 
     def showMenu(self, conn, cur):
-        user_option_headers = ["Browse Products", "Sign Out"]
-        user_options = [["p", "c"]]
+        user_option_headers = ["Browse Products", "Checkout", "Settings", "Sign Out"]
+        user_options = [["p", "c", "x"]]
         should_continue = True
         while (should_continue):
             print(tabulate(user_options, user_option_headers, tablefmt = "fancy_grid"))
             user_input = input()
             match user_input:
                 case 'p' | 'P':
+                    # Browse products
                     should_continue = self.listProducts(conn, cur)
                 case 'c' | 'C':
-                    break
+                    # Checkout
+                    should_continue = self.displayCheckoutOptions(conn, cur)
+                case 's' | 'S':
+                    # Settings
+                    should_continue = False
+                case 'x' | 'X':
+                    should_continue = False
                 case _:
                     pass
-        self.removeAllItemsFromCart(conn, cur)
+        if (len(self._cart.items()) > 0):
+            self.removeAllItemsFromCart(conn, cur)
         print("See ya! 👋")
 
     def removeAllItemsFromCart(self, conn: Connection, cur: cursor.Cursor):
@@ -40,6 +77,368 @@ class CustomerView:
             items_list
         )
         conn.commit()
+
+    def displayNewAddressInputOptionsAndAddToDatabase(self, conn: Connection, cur: cursor.Cursor) -> AddressEntry:
+        print("\nNew Address")
+
+        country = input("Country: ")
+        administrative_division = input("Administrative division (e.g. state, province): ")
+        city = input("City: ")
+        line1 = input("Address line 1: ")
+        line2 = input("Address line 2 (optional): ")
+        postal_code = input("Postal code: ")
+
+        # Ensuring input validity
+        while (len(country) < 1 or len(country) > 56):
+            print("Invalid country, please retry.")
+            country = input("Country: ")
+        while (len(administrative_division) > 24):
+            print("Invalid administrative division (must be less than 24 characters), please retry.")
+            administrative_division = input("Administrative division (e.g. state, province): ")
+        while (len(city) < 1 or len(city) > 127):
+            print("Invalid city, please retry.")
+            city = input("City: ")
+        while (len(line1) < 1 or len(line1) > 127):
+            print("Invalid address line 1, please retry.")
+            line1 = input("Address line 1: ")
+        while (len(line2) > 127):
+            print("Invalid address line 2, please retry.")
+            line2 = input("Address line 2: ")
+        while (len(postal_code) < 1 or len(postal_code) > 10):
+            print("Invalid postal code, please retry.")
+            postal_code = input("Postal code: ")
+
+        # Ensuring null values are null
+        if (len(administrative_division) == 0):
+            administrative_division = None
+        if (len(line2) == 0):
+            line2 = None
+
+        # Adding new address to database
+        cur.execute(
+            """
+                INSERT INTO addresses (country, administrative_division, city, line1, line2, postal_code, customer_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """,
+            (country, administrative_division, city, line1, line2, postal_code, self._customer_id)
+        )
+        conn.commit()
+
+        # Getting the address ID of the new address
+        rows = cur.fetchall()
+        if (len(rows) != 1):
+            raise ValueError(f"Expected 1 row, got {len(rows)}")
+        address_id = rows[0][0]
+
+        return AddressEntry(
+            id=address_id,
+            country=country,
+            administrative_division=administrative_division,
+            city=city,
+            line1=line1,
+            line2=line2,
+            postal_code=postal_code,
+            customer_id=self._customer_id
+        )
+
+    def promptUserToSelectAddress(self, conn: Connection, cur: cursor.Cursor) -> AddressEntry:
+        print("\nRetreiving addresses...", end='\r', flush=True)
+        # Retreiving payment methods
+        cur.execute(
+            "SELECT (*) FROM addresses WHERE customer_id = %s",
+            (self._customer_id)
+        )
+        print("                       ")
+        address_rows = cur.fetchall()
+        address_options = list()
+        address = None
+        if (len(address_rows) > 0):
+            # There are existing addresses, and the customer should be able to select from these
+            for index, address_row in enumerate(address_rows):
+                address_options.append([index + 1, address_row[5]])
+        address_options.append([len(address_rows) + 1, 'New address'])
+
+        # Printing table of addresses
+        print(tabulate(address_options, headers=['No.', 'Address'], tablefmt='fancy_grid'))
+
+        # Updating the address
+        selection_number = len(address_rows) + 2
+        new_address_selection_number = len(address_rows)
+        while not (0 < selection_number < len(address_rows) + 2):
+            try:
+                selection_number = int(input("Please select an address: "))
+                if not (0 < selection_number < len(address_rows) + 2):
+                    print("Invalid selection.", end=" ")
+            except ValueError:
+                print("Invalid selection.", end=" ")
+
+        if (new_address_selection_number == selection_number):
+            address = self.displayNewAddressInputOptionsAndAddToDatabase(conn, cur)
+        else:
+            address = AddressEntry(
+                id=address_rows[selection_number-1][0],
+                country=address_rows[selection_number-1][1],
+                administrative_division=address_rows[selection_number-1][2],
+                city=address_rows[selection_number-1][3],
+                line1=address_rows[selection_number-1][4],
+                line2=address_rows[selection_number-1][5],
+                postal_code=address_rows[selection_number-1][6],
+                customer_id=address_rows[selection_number-1][7]
+            )
+        return address
+
+    def updatePreferredPaymentMethod(self, conn: Connection, cur: cursor.Cursor, payment_id: int):
+        conn.execute("""
+            UPDATE customers
+            SET preferred_payment_id = %s
+            WHERE id = %s
+        """,
+        (payment_id, self._customer_id))
+
+
+    def displayNewPaymentMethodInputOptionsAndAddPaymentMethod(self, conn: Connection, cur: cursor.Cursor, billing_address = None) -> PaymentMethodEntry:
+        """
+        Prompts the user to enter information for a new payment method 
+        and adds the newly created payment method to the database.
+
+        Parameters
+        -------
+        conn : Connection
+            The connection to the database
+        cur : cursor.Cursor
+            The current cursor
+        
+        Returns
+        ------- 
+        int
+            The ID of the newly created payment method.
+        """
+
+        print("\nEnter payment information")
+
+        # Card number
+        card_number = input("Card number: ")
+        while not (8 < len(card_number) < 20):
+            card_number = input("Invalid card number. Please re-enter card number: ")
+
+        # Card expiration
+        card_expiration = None
+        while (card_expiration == None):
+            try:
+                card_expiration_str = input("Expiration: ")
+                card_expiration = datetime.strptime(card_expiration_str, "%m/%y")
+            except:
+                print("Invalid expiration. Expiration should be in 'month/year' format.", end=" ")
+                card_expiration = None
+
+        # Card code
+        card_code = None
+        while (card_code == None):
+            try:
+                card_code = (int)(input("Card code (those three or four magic numbers on the back): "))
+                if not (len(card_code) == 3 or len(card_code) == 4):
+                    card_code = None
+            except ValueError:
+                print("Invalid card code. Card code must be three or four digits.", end=" ")
+                card_code = None
+
+        # Giving the user the option to use their current billing address, or create a new one
+        if (billing_address != None):
+            user_response = input(f"Would you like to use {billing_address.line1} as your billing address? (y/n, blank is y)")
+            match input:
+                case 'y' | 'Y' | '':
+                    pass
+                case _:
+                    billing_address = None
+                    pass
+        if (billing_address == None):
+            billing_address = self.promptUserToSelectAddress(conn, cur)
+
+        # Adding the newly created payment method to the database
+        conn.execute("""
+            INSERT INTO payment_methods (card_number, card_expiration, card_code, billing_address_id, customer_id), VALUES
+            (%s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """,
+        (card_number, card_expiration, card_code, billing_address.id, self._customer_id)
+        )
+        payment_id = cur.fetchall()[0][0]
+
+        user_response = input("Would you like to make this your preferred payment method? (y/n, blank is y)")
+        match user_response:
+            case 'y' | 'Y' | '':
+                self.updatePreferredPaymentMethod(conn, cur, payment_id)
+
+        return PaymentMethodEntry(
+            id=payment_id,
+            card_expiration=card_expiration,
+            card_code=card_code,
+            billing_address_id=billing_address.id,
+            customer_id=self._customer_id
+        )
+
+    def promptUserToSelectPaymentMethod(self, conn: Connection, cur: cursor.Cursor) -> PaymentMethodEntry:
+        # Checking to see if user has a primary address
+        primary_address = None
+        cur.execute("""
+            SELECT a.*
+            FROM addresses as a
+            INNER JOIN customers as c ON c.primary_address_id = a.id AND c.id = %s
+        """,
+        (self._customer_id,))
+        result_rows = cur.fetchall()
+        if (len(result_rows) == 1):
+            primary_address = AddressEntry(
+                id=result_rows[0][0],
+                country=result_rows[0][1],
+                administrative_division=result_rows[0][2],
+                city=result_rows[0][3],
+                line1=result_rows[0][4],
+                line2=result_rows[0][5],
+                postal_code=result_rows[0][6],
+                customer_id=result_rows[0][7]
+            )
+
+        # Getting payment methods
+        cur.execute("SELECT (*) FROM payment_methods WHERE customer_id = %s", (self._customer_id))
+        payment_method_rows = cur.fetchall()
+        selection_table_headings = ['No.', 'Payment Method']
+        selection_table_entries = list()
+        for index, payment_method_row in enumerate(payment_method_rows):
+
+            # Getting and censoring card number
+            card_number_str = payment_method_row[1]
+            censored_card_number_str = self._censor_card_number_str(card_number_str)
+
+            # Filling in the selections table entry
+            selection_table_entries.append([
+                index + 1,
+                censored_card_number_str
+            ])
+
+        selection_table_entries.append(len(selection_table_entries) + 1, "New Payment Method")
+        print(tabulate(selection_table_entries, headers=selection_table_headings, tablefmt='fancy_grid'))
+
+        # Getting user selection
+        user_selection = -1
+        while not (0 < user_selection <= len(selection_table_entries)):
+            try:
+                user_selection = (int)(input("Please select a payment method: "))
+                if not (0 < user_selection <= len(selection_table_entries)):
+                    print(f"Invalid selection. Selection must be greater than 0 and less than {len(selection_table_entries) + 1}.")
+            except ValueError:
+                print(f"Invalid selection. Selection must be greater than 0 and less than {len(selection_table_entries) + 1}.")
+
+        new_payment_method_selection_number = len(selection_table_entries)
+        payment_method = None
+        if (new_payment_method_selection_number == user_selection):
+            payment_method = self.displayNewPaymentMethodInputOptionsAndAddPaymentMethod(conn, cur, primary_address)
+
+    def getPrimaryAddress(self, conn: Connection, cur: cursor.Cursor) -> AddressEntry:
+        # Getting the primary address for the customer
+        cur.execute("""
+            SELECT a.*
+            FROM addresses as a
+            INNER JOIN customers as c ON c.primary_address_id = a.id AND c.id = %s
+        """,
+        (self._customer_id))
+        result_rows = cur.fetchall()
+        if (len(result_rows) != 1):
+            return None
+        
+        address_id, country, administrative_division, city, line1, line2, postal_code, _ = result_rows[0]
+        return AddressEntry(
+            id=address_id,
+            country=country,
+            administrative_division=administrative_division,
+            city=city,
+            line1=line1,
+            line2=line2,
+            postal_code=postal_code,
+            customer_id=self._customer_id
+        )
+
+    def displayCheckoutOptions(self, conn: Connection, cur: cursor.Cursor) -> bool:
+        print("\n===== Checkout =====")
+        self.displayCurrentCart
+
+        address = self.getPrimaryAddress(conn, cur)
+        print("== Shipping Information ==")
+        if (address != None):
+            user_response = input(f"Would you like to ship to your primary address {address.line1}? (y/n, blank is y)")
+            match user_response:
+                case 'y' | 'Y' | '':
+                    pass
+                case _:
+                    address = None
+
+        if (address == None):
+            address = self.promptUserToSelectAddress(conn, cur)
+
+        # Getting the saved billing information
+        primary_payment_method_query = sql.SQL("""
+            SELECT 
+                p.id
+                p.card_number, 
+                p.card_expiration, 
+                p.card_code, 
+                p.billing_address_id,
+                a.country, 
+                a.administrative_division, 
+                a.city, 
+                a.line1, 
+                a.line2, 
+                a.postal_code
+            FROM payment_methods AS p
+            INNER JOIN customers as c ON c.preferred_payment_id = p.id AND c.id = %s
+            INNER JOIN addresses as a ON a.id = p.id;
+        """)
+        cur.execute(primary_payment_method_query, (self._customer_id))
+
+        payment_method = None
+        result_rows = cur.fetchall()
+        if (len(result_rows) < 1):
+            # The customer has no primary payment method
+            payment_method = self.promptUserToSelectPaymentMethod(conn, cur)
+        else:
+            payment_method_id, card_number, card_exp_str, card_code, billing_address_id, country, administrative_division, city, line1, line2, postal_code = result_rows[0]
+            card_expiration = None
+            try:
+                card_expiration = datetime.strptime(card_exp_str, "%m/%y")
+            except:
+                print("Something went wrong with fetching preferred payment method card data.")
+                payment_method = self.promptUserToSelectPaymentMethod(conn, cur)
+
+            payment_method = PaymentMethodEntry(
+                id=payment_method_id,
+                card_number=card_number,
+                card_expiration=card_expiration,
+                card_code=card_code,
+                billing_address_id=billing_address_id,
+                customer_id=self._customer_id
+            )
+            address = AddressEntry(
+                id=billing_address_id,
+                country=country,
+                administrative_division=administrative_division,
+                city=city,
+                line1=line1,
+                line2=line2,
+                postal_code=postal_code,
+                customer_id=self._customer_id
+            )
+
+            user_response = input(f"Would you like to use payment method {self._censor_card_number_str(card_number)}? (y/n, blank is y)")
+            match user_response:
+                case 'y' | 'Y' | '':
+                    pass
+                case _:
+                    payment_method = self.promptUserToSelectPaymentMethod(conn, cur)
+
+            
+            
+        return True
 
     def displayRemoveFromCartOptions(self, conn: Connection, cur: cursor.Cursor, previous_page: Callable):
         try:
@@ -143,7 +542,7 @@ class CustomerView:
 
     def displayCurrentCart(self, conn: Connection, cur: cursor.Cursor):
         print("Current cart: ")
-        table_headings = ["Product ID", "Product Name", "Count"]
+        table_headings = ["Product ID", "Product Name", "Count", "Price"]
 
         # Constructing the query
         if (len(self._cart.items()) == 0):
@@ -151,7 +550,7 @@ class CustomerView:
             return
         
         product_names_query = """
-            SELECT id, product_name FROM products WHERE id IN (
+            SELECT id, product_name, price FROM products WHERE id IN (
         """
         number_of_items_in_cart = len(self._cart.keys())
         for index, key in enumerate(self._cart.keys()):
@@ -160,14 +559,19 @@ class CustomerView:
                 product_names_query += ", "
         product_names_query += ")"
 
-        # Executing the query
+        # Executing the query, printing the table
         cur.execute(product_names_query)
         product_rows = cur.fetchall()
         table_contents = list()
+        total_price = Decimal(0.00)
         for row in product_rows:
             product_id = row[0]
             product_name = row[1]
-            table_contents.append([product_id, product_name, self._cart[product_id]])
+            price = row[2] * self._cart[product_id]
+            total_price += price
+            table_contents.append([product_id, product_name, self._cart[product_id], price])
+
+        table_contents.append(["Total", "", "", total_price])
 
         print(tabulate(table_contents, headers=table_headings, tablefmt="fancy_grid"))
 
@@ -189,8 +593,8 @@ class CustomerView:
 
         # Presenting customer options   
         user_options = [
-            ["Add to Cart", "Remove from Cart", "Rate", "Report", "View Cart"],
-            ["a", "s", "d", "f", "v"]
+            ["Add to Cart", "Remove from Cart", "Rate", "Report", "View Cart", "Checkout"],
+            ["a", "s", "d", "f", "v", "c"]
         ]
         print("Controls: ")
         print(tabulate([user_options[1]], user_options[0], tablefmt = "simple"))
@@ -212,7 +616,26 @@ class CustomerView:
             case 'r' | 'R':
                 return False
             case 'v' | 'V':
+                # View cart
                 self.displayCurrentCart(conn, cur)
+                return True
+            case 'c' | 'C':
+                # Checkout
+                self.displayCheckoutOptions(conn, cur)
                 return True
             
         return True
+
+    def _censor_card_number_str(self, card_number_str: str) -> str:
+        censored_card_number_str = ""
+        card_number_len = len(card_number_str)
+        for i in range(card_number_len):
+            if (i == 0):
+                censored_card_number_str += card_number_str[i]
+            elif (i > card_number_len - 5):
+                censored_card_number_str += card_number_str[i]
+            elif (i % 4 == 0):
+                censored_card_number_str += "* "
+            else:
+                censored_card_number_str += "*"
+        return censored_card_number_str
