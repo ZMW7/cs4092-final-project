@@ -45,6 +45,11 @@ class DeliveryEntry(NamedTuple):
     shipped_on: dtdate | None
     estimated_delivery_time: datetime | None
 
+class PurchaseHistoryEntry(NamedTuple):
+    purchase: PurchaseEntry
+    deliveries: dict[int, tuple[DeliveryEntry, str]]
+    sales: dict[int, tuple[ProductSalesEntry, str]]
+
 class CustomerView:
 
     # Cart dict:
@@ -67,7 +72,7 @@ class CustomerView:
 
     def showMenu(self, conn, cur):
         user_option_headers = ["Browse Products", "Checkout", "My Purchases", "Settings", "Sign Out"]
-        user_options = [["p", "c", "h", "s" "x"]]
+        user_options = [["p", "c", "h", "s", "x"]]
         should_continue = True
         while (should_continue):
             print(tabulate(user_options, user_option_headers, tablefmt = "fancy_grid"))
@@ -81,7 +86,7 @@ class CustomerView:
                     should_continue = self.displayCheckoutOptions(conn, cur)
                 case 'h' | 'H':
                     # My purchases
-                    should_continue = self.displayPurchaseHistory(conn, cur)
+                    should_continue = self.displayPurchaseHistory(conn, cur, 0)
                 case 's' | 'S':
                     # Settings
                     should_continue = False
@@ -464,7 +469,7 @@ class CustomerView:
             if (i < len(delivery_ids) - 1):
                 delivery_query_str += "OR id = "
 
-        cur.execute(delivery_query_str, tuple(delivery_ids))
+        cur.execute(delivery_query_str, (delivery_ids))
         delivery_rows = cur.fetchall()
         if (len(delivery_rows) == 0):
             return list()
@@ -682,6 +687,7 @@ class CustomerView:
 
         # Nice! Now we have the payment method, and the address to ship to.
         purchase = self.emptyCartAndCreatePurchase(conn, cur, payment_method)
+        self.createDeliveryForPurchase(conn, cur, purchase, shipping_address)
         
         return True
 
@@ -823,12 +829,123 @@ class CustomerView:
         # Showing the next options
         return
 
-    def displayPurchaseHistory(self, conn: Connection, cur: cursor.Cursor) -> bool:
+    def displayPurchaseHistory(self, conn: Connection, cur: cursor.Cursor, offset: int = 0) -> bool:
         # Defining the query
-        purchase_history_query = """
-            
-        """
-        return False
+        # The query gets every delivery, as well as the associated purchase of each delivery
+        # The query should also get the items in each delivery
+        # The query should return pages of items 10 at a time
+        should_continue: bool = True
+        while (should_continue):
+            local_purchase_history: dict[int, PurchaseHistoryEntry] = dict()
+            # purchase_history_query_str = """
+            #     SELECT p.*, d.*, s.*, prod.product_name, a.line1
+            #     FROM deliveries as d
+            #     INNER JOIN purchases as p ON d.purchase_id = p.id AND p.customer_id = %s
+            #     INNER JOIN product_sales as s ON p.id = s.purchase_id
+            #     INNER JOIN products as prod ON s.product_id = prod.id
+            #     INNER JOIN addresses as a ON d.address_id = a.id
+            #     ORDER BY d.id
+            #     LIMIT 25
+            #     OFFSET %s
+            # """
+            purchase_history_query = sql.SQL("""
+                SELECT p.*, d.*, s.*, prod.product_name, a.line1
+                FROM purchases as p
+                INNER JOIN deliveries as d ON d.purchase_id = p.id AND p.customer_id = %s
+                INNER JOIN product_sales as s ON p.id = s.purchase_id
+                INNER JOIN products as prod ON s.product_id = prod.id
+                INNER JOIN addresses as a ON d.address_id = a.id
+                ORDER BY d.id
+                LIMIT 25
+                OFFSET %s
+            """)
+            cur.execute(purchase_history_query, (self._customer_id, offset,))
+
+            # Filling the local purchase history
+            result_rows = cur.fetchall()
+
+            # # TEMPORARY
+            # temp_query = sql.SQL("""SELECT p.*, d.* FROM purchases as p INNER JOIN deliveries as d on d.purchase_id = p.id""")
+            # cur.execute(temp_query)
+            # print(cur.fetchall())
+            # # end temporary
+
+            for result_row in result_rows:
+                purchase: PurchaseEntry = PurchaseEntry(
+                    id=result_row[0],
+                    created_at=result_row[1],
+                    customer_id=result_row[2],
+                    payment_method_id=result_row[3]
+                )
+                delivery: DeliveryEntry = DeliveryEntry(
+                    id=result_row[4],
+                    purchase_id=result_row[5],
+                    address_id=result_row[6],
+                    delivery_status=result_row[7],
+                    shipped_on=result_row[8],
+                    estimated_delivery_time=result_row[9]
+                )
+                sale: ProductSalesEntry = ProductSalesEntry(
+                    id=result_row[10],
+                    purchase_id=result_row[11],
+                    product_id=result_row[12],
+                    price_per_item=result_row[13],
+                    quantity=result_row[14]
+                )
+                product_name: str = result_row[15]
+                address_line1 = result_row[16]
+                if not (purchase.id in local_purchase_history):
+                    local_purchase_history[purchase.id] = PurchaseHistoryEntry(
+                        purchase=purchase,
+                        deliveries={delivery.id: (delivery, address_line1)},
+                        sales={sale.id: (sale, product_name)}
+                    )
+                else:
+                    local_purchase_history[purchase.id].deliveries[delivery.id] = (delivery, address_line1)
+                    local_purchase_history[purchase.id].sales[sale.id] = (sale, product_name)
+
+            # Pretty printing the table
+            purchase_history_headers = ["Purchase ID", "Items in Purchase", "Delivery Status"]
+            purchase_history_table_entries = list()
+            for id, purchase in local_purchase_history.items():
+                sales_str = ""
+                deliveries_str = ""
+
+                # Creating the sales str
+                total_price: Decimal = Decimal("0.00")
+                sales_str = "== Items Purchased ==\n"
+                for sale_id, sale_info in purchase.sales.items():
+                    sale = sale_info[0]
+                    product_name = sale_info[1]
+                    sales_str += f"- {product_name}: {sale.quantity} (${(sale.price_per_item * sale.quantity).quantize(Decimal("0.00"))})\n"
+                    total_price += sale.price_per_item * sale.quantity
+
+                # Creating the deliveries str
+                deliveries_str = "== Deliveries ==\n"
+                for delivery_id, delivery_info in purchase.deliveries.items():
+                    delivery = delivery_info[0]
+                    address_line1 = delivery_info[1]
+                    deliveries_str += f"""
+- Delivery ID: {delivery_id}
+    - Shipped to: {address_line1}
+    - Status: {delivery.delivery_status}
+                    """
+                    if (delivery.shipped_on != None):
+                        deliveries_str += f"    - Shipped on {delivery.shipped_on.isoformat()}"
+                    if (delivery.estimated_delivery_time != None):
+                        deliveries_str += f"    - Estimated delivery time: {delivery.estimated_delivery_time.isoformat()}"
+
+                purchase_history_table_entries.append([
+                    id,
+                    sales_str,
+                    deliveries_str
+                ])
+
+            print(tabulate(purchase_history_table_entries, headers=purchase_history_headers, tablefmt='fancy_grid'))
+
+            should_continue = False
+        
+        return True
 
     def listProducts(self, conn, cur: cursor.Cursor):
         # Getting the products
