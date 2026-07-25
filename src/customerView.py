@@ -6,6 +6,7 @@ from typing import NamedTuple
 from datetime import datetime as datetime, date as dtdate
 import itertools
 import textwrap
+import readline # for up arrow support on linux / mac
 
 class AddressEntry(NamedTuple):
     id: int
@@ -859,12 +860,6 @@ class CustomerView:
             # Filling the local purchase history
             result_rows = cur.fetchall()
 
-            # # TEMPORARY
-            # temp_query = sql.SQL("""SELECT p.*, d.* FROM purchases as p INNER JOIN deliveries as d on d.purchase_id = p.id""")
-            # cur.execute(temp_query)
-            # print(cur.fetchall())
-            # # end temporary
-
             for result_row in result_rows:
                 purchase: PurchaseEntry = PurchaseEntry(
                     id=result_row[0],
@@ -900,7 +895,7 @@ class CustomerView:
                     local_purchase_history[purchase.id].sales[sale.id] = (sale, product_name)
 
             # Pretty printing the table
-            purchase_history_headers = ["Purchase\nID", "Items in Purchase", "Delivery Status"]
+            purchase_history_headers = ["Purchase\nID", "Items in Purchase", "Delivery Status", "Total\nPrice"]
             purchase_history_table_entries = list()
             for id, purchase in local_purchase_history.items():
                 sales_str = ""
@@ -908,12 +903,20 @@ class CustomerView:
 
                 # Creating the sales str
                 total_price: Decimal = Decimal("0.00")
+                sales_table_entries = list()
                 sales_str = "== Items Purchased ==\n"
                 for sale_id, sale_info in purchase.sales.items():
                     sale = sale_info[0]
                     product_name = sale_info[1]
-                    sales_str += f"- {strict_truncate_str(product_name, 20)}: {sale.quantity} (${(sale.price_per_item * sale.quantity).quantize(Decimal("0.00"))})\n"
+                    # sales_str += f"- {strict_truncate_str(product_name, 20)}: {sale.quantity} (${(sale.price_per_item * sale.quantity).quantize(Decimal("0.00"))})\n"
+                    sales_table_entries.append([
+                        f"- {textwrap.fill(product_name, 20, subsequent_indent="  ")}",
+                        f"({sale.quantity})",
+                        f"${(sale.price_per_item * sale.quantity).quantize(Decimal("0.00"))}"
+                    ])
+                    # sales_str += f"- {textwrap.fill(product_name, 20, subsequent_indent="    ")}: {sale.quantity} (${(sale.price_per_item * sale.quantity).quantize(Decimal("0.00"))})\n"
                     total_price += sale.price_per_item * sale.quantity
+                sales_str = tabulate(sales_table_entries, tablefmt='plain')
 
                 # Creating the deliveries str
                 deliveries_str = "== Deliveries ==\n"
@@ -933,7 +936,8 @@ class CustomerView:
                 purchase_history_table_entries.append([
                     id,
                     sales_str,
-                    deliveries_str
+                    deliveries_str,
+                    f"${total_price}"
                 ])
 
             print(tabulate(purchase_history_table_entries, headers=purchase_history_headers, tablefmt='fancy_grid'))
