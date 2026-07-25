@@ -827,9 +827,9 @@ class CustomerView:
             product_name = row[1]
             price = row[2] * self._cart[product_id]
             total_price += price
-            table_contents.append([product_id, product_name, self._cart[product_id], price])
+            table_contents.append([product_id, product_name, self._cart[product_id], f"${price.quantize(Decimal("0.00"))}"])
 
-        table_contents.append(["Total", "", "", total_price])
+        table_contents.append(["Total", "", "", f"${total_price.quantize(Decimal("0.00"))}"])
 
         print(tabulate(table_contents, headers=table_headings, tablefmt="fancy_grid"))
 
@@ -949,14 +949,26 @@ class CustomerView:
     def listProducts(self, conn, cur: cursor.Cursor):
         # Getting the products
         query = """
-            SELECT p.id, p.product_name, p.stock, s.seller_name, p.price
+            SELECT p.id, p.product_name, p.stock, s.seller_name,  AVG(r.rating) as average_rating, p.price
             FROM products as p
-            JOIN sellers as s ON p.seller_id = s.id;
+            JOIN sellers as s ON p.seller_id = s.id
+            JOIN ratings as r ON r.product_id = s.id
+            GROUP BY p.id, p.stock, s.seller_name
+            ;
         """
         cur.execute(query)
         product_rows = cur.fetchall()
+        for index, product_row in enumerate(product_rows):
+            product_rows[index] = (
+                product_row[0],
+                product_row[1],
+                product_row[2],
+                product_row[3],
+                product_row[4],
+                f"${product_row[5].quantize(Decimal("0.00"))}",
+            )
         print("\nProducts:")
-        print(tabulate(product_rows, headers = ["ID", "Name", "Stock", "Seller", "Price"], tablefmt="fancy_grid"))
+        print(tabulate(product_rows, headers = ["ID", "Name", "Stock", "Seller", "Rating", "Price"], tablefmt="fancy_grid"))
 
         # Presenting customer options   
         user_options = [
