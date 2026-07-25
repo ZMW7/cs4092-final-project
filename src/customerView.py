@@ -151,7 +151,7 @@ class CustomerView:
                 print("Updating preferred address...", end='\r', flush=True)
                 cur.execute(
                     """
-                    UPDATE addresses
+                    UPDATE customers
                     SET primary_address_id = %s
                     WHERE id = %s
                     """,
@@ -175,17 +175,17 @@ class CustomerView:
         print("\nRetreiving addresses...", end='\r', flush=True)
         # Retreiving payment methods
         cur.execute(
-            "SELECT (*) FROM addresses WHERE customer_id = %s",
-            (self._customer_id)
+            "SELECT * FROM addresses WHERE customer_id = %s",
+            (self._customer_id,)
         )
-        print("                       ")
+        print("Addresses              ")
         address_rows = cur.fetchall()
         address_options = list()
         address = None
         if (len(address_rows) > 0):
             # There are existing addresses, and the customer should be able to select from these
             for index, address_row in enumerate(address_rows):
-                address_options.append([index + 1, address_row[5]])
+                address_options.append([index + 1, address_row[4]])
         address_options.append([len(address_rows) + 1, 'New address'])
 
         # Printing table of addresses
@@ -193,7 +193,7 @@ class CustomerView:
 
         # Updating the address
         selection_number = len(address_rows) + 2
-        new_address_selection_number = len(address_rows)
+        new_address_selection_number = len(address_rows) + 1
         while not (0 < selection_number < len(address_rows) + 2):
             try:
                 selection_number = int(input("Please select an address: "))
@@ -218,12 +218,14 @@ class CustomerView:
         return address
 
     def updatePreferredPaymentMethod(self, conn: Connection, cur: cursor.Cursor, payment_id: int):
-        conn.execute("""
+        print(f"Updating preferred payment method to id {payment_id}")
+        cur.execute("""
             UPDATE customers
             SET preferred_payment_id = %s
             WHERE id = %s
         """,
-        (payment_id, self._customer_id))
+        (payment_id, self._customer_id,))
+        conn.commit()
 
 
     def displayNewPaymentMethodInputOptionsAndAddPaymentMethod(self, conn: Connection, cur: cursor.Cursor, billing_address = None) -> PaymentMethodEntry:
@@ -247,7 +249,8 @@ class CustomerView:
         print("\nEnter payment information")
 
         # Card number
-        card_number = input("Card number: ")
+        user_response = input("Card number: ")
+        card_number = "".join([character for character in user_response if character.isdigit()])
         while not (8 < len(card_number) < 20):
             card_number = input("Invalid card number. Please re-enter card number: ")
 
@@ -264,19 +267,20 @@ class CustomerView:
         # Card code
         card_code = None
         while (card_code == None):
+            card_code = (input("Card code (those three or four magic numbers on the back): "))
             try:
-                card_code = (int)(input("Card code (those three or four magic numbers on the back): "))
-                if not (len(card_code) == 3 or len(card_code) == 4):
-                    card_code = None
+                temp = int(card_code)
             except ValueError:
                 print("Invalid card code. Card code must be three or four digits.", end=" ")
+                card_code = None
+            if not (len(card_code) == 3 or len(card_code) == 4):
                 card_code = None
 
         # Giving the user the option to use their current billing address, or create a new one
         if (billing_address != None):
             user_response = input(f"Would you like to use {billing_address.line1} as your billing address? (y/n, blank is y)")
-            match input:
-                case 'y' | 'Y' | '':
+            match user_response:
+                case 'y' | 'Y' | "":
                     pass
                 case _:
                     billing_address = None
@@ -285,14 +289,16 @@ class CustomerView:
             billing_address = self.promptUserToSelectAddress(conn, cur)
 
         # Adding the newly created payment method to the database
-        conn.execute("""
-            INSERT INTO payment_methods (card_number, card_expiration, card_code, billing_address_id, customer_id), VALUES
-            (%s, %s, %s, %s, %s, %s)
+        cur.execute("""
+            INSERT INTO payment_methods (card_number, card_expiration, card_code, billing_address_id, customer_id) VALUES
+            (%s, %s, %s, %s, %s)
             RETURNING id
         """,
-        (card_number, card_expiration, card_code, billing_address.id, self._customer_id)
+        (card_number, card_expiration, card_code, billing_address.id, self._customer_id,)
         )
-        payment_id = cur.fetchall()[0][0]
+        conn.commit()
+        result_rows = cur.fetchall()
+        payment_id = result_rows[0][0]
 
         user_response = input("Would you like to make this your preferred payment method? (y/n, blank is y)")
         match user_response:
@@ -301,6 +307,7 @@ class CustomerView:
 
         return PaymentMethodEntry(
             id=payment_id,
+            card_number=card_number,
             card_expiration=card_expiration,
             card_code=card_code,
             billing_address_id=billing_address.id,
@@ -328,9 +335,15 @@ class CustomerView:
                 postal_code=result_rows[0][6],
                 customer_id=result_rows[0][7]
             )
+        elif (len(result_rows) == 0):
+            print("No address found.")
+            return
+        else:
+            print(f"There are {len(result_rows)} result rows??")
+            return
 
         # Getting payment methods
-        cur.execute("SELECT (*) FROM payment_methods WHERE customer_id = %s", (self._customer_id))
+        cur.execute("SELECT * FROM payment_methods WHERE customer_id = %s", (self._customer_id,))
         payment_method_rows = cur.fetchall()
         selection_table_headings = ['No.', 'Payment Method']
         selection_table_entries = list()
@@ -346,7 +359,7 @@ class CustomerView:
                 censored_card_number_str
             ])
 
-        selection_table_entries.append(len(selection_table_entries) + 1, "New Payment Method")
+        selection_table_entries.append([len(selection_table_entries) + 1, "New Payment Method"])
         print(tabulate(selection_table_entries, headers=selection_table_headings, tablefmt='fancy_grid'))
 
         # Getting user selection
@@ -363,6 +376,18 @@ class CustomerView:
         payment_method = None
         if (new_payment_method_selection_number == user_selection):
             payment_method = self.displayNewPaymentMethodInputOptionsAndAddPaymentMethod(conn, cur, primary_address)
+        else:
+            payment_method = PaymentMethodEntry(
+                id=payment_method_rows[user_selection - 1][0],
+                card_number=payment_method_rows[user_selection - 1][1],
+                card_expiration=payment_method_rows[user_selection - 1][2],
+                card_code=payment_method_rows[user_selection - 1][3],
+                billing_address_id=payment_method_rows[user_selection - 1][4],
+                customer_id=payment_method_rows[user_selection - 1][5]
+            )
+
+        return payment_method
+
 
     def getPrimaryAddress(self, conn: Connection, cur: cursor.Cursor) -> AddressEntry:
         # Getting the primary address for the customer
@@ -371,9 +396,10 @@ class CustomerView:
             FROM addresses as a
             INNER JOIN customers as c ON c.primary_address_id = a.id AND c.id = %s
         """,
-        (self._customer_id))
+        (self._customer_id,))
         result_rows = cur.fetchall()
         if (len(result_rows) != 1):
+            print("No primary address found")
             return None
         
         address_id, country, administrative_division, city, line1, line2, postal_code, _ = result_rows[0]
@@ -388,7 +414,7 @@ class CustomerView:
             customer_id=self._customer_id
         )
 
-    def emptyCartAndCreatePurchase(self, conn: Connection, cur: cursor.Cursor, paymentMethod: PaymentMethodEntry) -> int:
+    def emptyCartAndCreatePurchase(self, conn: Connection, cur: cursor.Cursor, paymentMethod: PaymentMethodEntry) -> PurchaseEntry:
         """
         Empties all items from the cart, adds a purchase to the database,
         adds a product sale for each purchased product to the database.
@@ -422,12 +448,13 @@ class CustomerView:
             (%s, %s)
             RETURNING id, created_at
             """,
-            (self._customer_id, paymentMethod.id)
+            (self._customer_id, paymentMethod.id,)
         )
+        conn.commit()
         try:
             result = cur.fetchall()
-            purchase_id = int(result[0])
-            created_at = datetime(created_at)
+            purchase_id = int(result[0][0])
+            created_at = result[0][1]
         except ValueError as e:
             print(f"Error creating purchase: {e}")
             return
@@ -438,7 +465,6 @@ class CustomerView:
             customer_id=self._customer_id,
             payment_method_id=paymentMethod.id
         )
-
 
         product_names_query = """
             SELECT id, product_name, price FROM products WHERE id IN (
@@ -456,14 +482,29 @@ class CustomerView:
         if (len(product_rows) != number_of_unique_items_in_cart):
             raise ValueError(f"Expected {number_of_unique_items_in_cart} items, got {len(product_rows)} from database.")
 
-        # Summing up the total cost and creating the insertion queries
+        # Summing up prices, calculating the total cost
+        for product_row in product_rows:
+            total_cost += (product_row[2] * self._cart[product_row[0]])
+
+        user_response = input(f"Confirm Purchase (total: ${total_cost})? (y/n)")
+        match user_response:
+            case 'y' | 'Y':
+                pass
+            case 'n' | 'N':
+                print("Purchase canceled.")
+                return None
+            case _:
+                print("Purchase canceled.")
+                return None
+
+        # Creating the insertion queries
         sale_insertions_query: str = "INSERT INTO product_sales (purchase_id, product_id, price_per_item, quantity) VALUES "
         sale_insertions_query_values = list()
         for index, product_row in enumerate(product_rows):
-            total_cost += product_row[2]
             product_id = product_row[0]
             price_per_item = product_row[2]
             quantity = self._cart[product_id]
+            # total_cost += (price_per_item * quantity)
             product_sales.append(ProductSalesEntry(
                 id=None,
                 purchase_id=purchase_id,
@@ -472,7 +513,7 @@ class CustomerView:
                 quantity=quantity
             ))
             sale_insertions_query_values.append((purchase_id, product_id, price_per_item, quantity))
-            sale_insertions_query += "(%s, %s, %s)"
+            sale_insertions_query += "(%s, %s, %s, %s)"
             if (index < len(product_rows) - 1):
                 sale_insertions_query += ", "
 
@@ -480,13 +521,18 @@ class CustomerView:
 
         flattened_sale_insertions_query_values: tuple = tuple(itertools.chain.from_iterable(sale_insertions_query_values))
         cur.execute(sale_insertions_query, flattened_sale_insertions_query_values)
+        conn.commit()
         # sale_ids = [row[0] for row in cur.fetchall()]
         insertion_rows = cur.fetchall()
         for index, row in enumerate(insertion_rows):
-            product_sales[index].id = row[0]
+            # product_sales[index].id = row[0]
+            product_sales[index] = product_sales[index]._replace(id=row[0])
 
         # Clearing the cart
         self._cart = dict()
+
+        print("Purchase complete! ✅")
+        return purchase
 
     def displayCheckoutOptions(self, conn: Connection, cur: cursor.Cursor) -> bool:
         print("\n===== Checkout =====")
@@ -508,7 +554,7 @@ class CustomerView:
         # Getting the saved billing information
         primary_payment_method_query = sql.SQL("""
             SELECT 
-                p.id
+                p.id,
                 p.card_number, 
                 p.card_expiration, 
                 p.card_code, 
@@ -521,23 +567,24 @@ class CustomerView:
                 a.postal_code
             FROM payment_methods AS p
             INNER JOIN customers as c ON c.preferred_payment_id = p.id AND c.id = %s
-            INNER JOIN addresses as a ON a.id = p.id;
+            INNER JOIN addresses as a ON a.id = p.billing_address_id;
         """)
-        cur.execute(primary_payment_method_query, (self._customer_id))
+        cur.execute(primary_payment_method_query, (self._customer_id,))
 
         payment_method = None
         result_rows = cur.fetchall()
         if (len(result_rows) < 1):
             # The customer has no primary payment method
+            print("It seems you don't have a preferred payment method.") # TODO: Remove this print statement
             payment_method = self.promptUserToSelectPaymentMethod(conn, cur)
         else:
-            payment_method_id, card_number, card_exp_str, card_code, billing_address_id, country, administrative_division, city, line1, line2, postal_code = result_rows[0]
+            payment_method_id, card_number, card_expiration, card_code, billing_address_id, country, administrative_division, city, line1, line2, postal_code = result_rows[0]
             card_expiration = None
-            try:
-                card_expiration = datetime.strptime(card_exp_str, "%m/%y")
-            except:
-                print("Something went wrong with fetching preferred payment method card data.")
-                payment_method = self.promptUserToSelectPaymentMethod(conn, cur)
+            # try:
+                # card_expiration = datetime.strptime(card_exp_str, "%m/%y")
+            # except:
+                # print("Something went wrong with fetching preferred payment method card data.")
+                # payment_method = self.promptUserToSelectPaymentMethod(conn, cur)
 
             payment_method = PaymentMethodEntry(
                 id=payment_method_id,
@@ -566,9 +613,8 @@ class CustomerView:
                     payment_method = self.promptUserToSelectPaymentMethod(conn, cur)
 
         # Nice! Now we have the payment method, and the address to ship to.
-
-            
-            
+        purchase = self.emptyCartAndCreatePurchase(conn, cur, payment_method)
+        
         return True
 
     def displayRemoveFromCartOptions(self, conn: Connection, cur: cursor.Cursor, previous_page: Callable):
