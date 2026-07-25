@@ -4,6 +4,7 @@ from collections.abc import Callable
 from decimal import Decimal
 from typing import NamedTuple
 from datetime import datetime
+import itertools
 
 class AddressEntry(NamedTuple):
     id: int
@@ -22,6 +23,19 @@ class PaymentMethodEntry(NamedTuple):
     card_code: int
     billing_address_id: int
     customer_id: int
+
+class PurchaseEntry(NamedTuple):
+    id: int
+    created_at: datetime
+    customer_id: int
+    payment_method_id: int
+
+class ProductSalesEntry(NamedTuple):
+    id: int
+    purchase_id: int
+    product_id: int
+    price_per_item: Decimal
+    quantity: int
 
 class CustomerView:
 
@@ -130,6 +144,21 @@ class CustomerView:
         if (len(rows) != 1):
             raise ValueError(f"Expected 1 row, got {len(rows)}")
         address_id = rows[0][0]
+
+        user_response = input(f"Would you like to make {line1} your preferred address? (y/n, blank is y): ")
+        match user_response:
+            case 'y' | 'Y' | '':
+                print("Updating preferred address...", end='\r', flush=True)
+                cur.execute(
+                    """
+                    UPDATE addresses
+                    SET primary_address_id = %s
+                    WHERE id = %s
+                    """,
+                    (address_id, self._customer_id,)
+                )
+                conn.commit()
+                print("Preferred address updated!   ")
 
         return AddressEntry(
             id=address_id,
@@ -359,22 +388,122 @@ class CustomerView:
             customer_id=self._customer_id
         )
 
+    def emptyCartAndCreatePurchase(self, conn: Connection, cur: cursor.Cursor, paymentMethod: PaymentMethodEntry) -> int:
+        """
+        Empties all items from the cart, adds a purchase to the database,
+        adds a product sale for each purchased product to the database.
+
+        Parameters
+        -------
+        conn : Connection
+            The connection to the database
+        cur : cursor.Cursor
+            The current cursor
+        
+        Returns
+        ------- 
+        int
+            The ID of the purchase.
+        """
+
+        if (len(self._cart) == 0):
+            print("Cart is already empty, nothing to purchase.")
+            return
+
+        purchase: PurchaseEntry | None = None
+        product_sales: list[ProductSalesEntry] = list()
+        purchase_id: int | None = None
+        created_at: datetime | None = None
+        total_cost = Decimal(0.00)
+
+        # Creating the purchase
+        cur.execute("""
+            INSERT INTO purchases (customer_id, payment_method_id) VALUES
+            (%s, %s)
+            RETURNING id, created_at
+            """,
+            (self._customer_id, paymentMethod.id)
+        )
+        try:
+            result = cur.fetchall()
+            purchase_id = int(result[0])
+            created_at = datetime(created_at)
+        except ValueError as e:
+            print(f"Error creating purchase: {e}")
+            return
+
+        purchase = PurchaseEntry(
+            id=purchase_id,
+            created_at=created_at,
+            customer_id=self._customer_id,
+            payment_method_id=paymentMethod.id
+        )
+
+
+        product_names_query = """
+            SELECT id, product_name, price FROM products WHERE id IN (
+        """
+        number_of_unique_items_in_cart = len(self._cart.keys())
+        for index, key in enumerate(self._cart.keys()):
+            product_names_query += str(key)
+            if (index < number_of_unique_items_in_cart - 1):
+                product_names_query += ", "
+        product_names_query += ")"
+
+        # Executing the query
+        cur.execute(product_names_query)
+        product_rows = cur.fetchall()
+        if (len(product_rows) != number_of_unique_items_in_cart):
+            raise ValueError(f"Expected {number_of_unique_items_in_cart} items, got {len(product_rows)} from database.")
+
+        # Summing up the total cost and creating the insertion queries
+        sale_insertions_query: str = "INSERT INTO product_sales (purchase_id, product_id, price_per_item, quantity) VALUES "
+        sale_insertions_query_values = list()
+        for index, product_row in enumerate(product_rows):
+            total_cost += product_row[2]
+            product_id = product_row[0]
+            price_per_item = product_row[2]
+            quantity = self._cart[product_id]
+            product_sales.append(ProductSalesEntry(
+                id=None,
+                purchase_id=purchase_id,
+                product_id=product_id,
+                price_per_item=price_per_item,
+                quantity=quantity
+            ))
+            sale_insertions_query_values.append((purchase_id, product_id, price_per_item, quantity))
+            sale_insertions_query += "(%s, %s, %s)"
+            if (index < len(product_rows) - 1):
+                sale_insertions_query += ", "
+
+        sale_insertions_query += " RETURNING id"
+
+        flattened_sale_insertions_query_values: tuple = tuple(itertools.chain.from_iterable(sale_insertions_query_values))
+        cur.execute(sale_insertions_query, flattened_sale_insertions_query_values)
+        # sale_ids = [row[0] for row in cur.fetchall()]
+        insertion_rows = cur.fetchall()
+        for index, row in enumerate(insertion_rows):
+            product_sales[index].id = row[0]
+
+        # Clearing the cart
+        self._cart = dict()
+
     def displayCheckoutOptions(self, conn: Connection, cur: cursor.Cursor) -> bool:
         print("\n===== Checkout =====")
         self.displayCurrentCart
 
-        address = self.getPrimaryAddress(conn, cur)
+        shipping_address = self.getPrimaryAddress(conn, cur)
         print("== Shipping Information ==")
-        if (address != None):
-            user_response = input(f"Would you like to ship to your primary address {address.line1}? (y/n, blank is y)")
+        if (shipping_address != None):
+            user_response = input(f"Would you like to ship to your primary address {shipping_address.line1}?\n(y/n, blank is y): ")
             match user_response:
                 case 'y' | 'Y' | '':
                     pass
                 case _:
-                    address = None
+                    shipping_address = None
 
-        if (address == None):
-            address = self.promptUserToSelectAddress(conn, cur)
+        if (shipping_address == None):
+            shipping_address = self.promptUserToSelectAddress(conn, cur)
 
         # Getting the saved billing information
         primary_payment_method_query = sql.SQL("""
@@ -435,6 +564,8 @@ class CustomerView:
                     pass
                 case _:
                     payment_method = self.promptUserToSelectPaymentMethod(conn, cur)
+
+        # Nice! Now we have the payment method, and the address to ship to.
 
             
             
