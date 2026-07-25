@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import NamedTuple
 from datetime import datetime as datetime, date as dtdate
 import itertools
+import textwrap
 
 class AddressEntry(NamedTuple):
     id: int
@@ -49,6 +50,11 @@ class PurchaseHistoryEntry(NamedTuple):
     purchase: PurchaseEntry
     deliveries: dict[int, tuple[DeliveryEntry, str]]
     sales: dict[int, tuple[ProductSalesEntry, str]]
+
+def strict_truncate_str(text: str, max_length: int = 15):
+    if len(text) > max_length:
+        return text[:max_length - 3] + "..."
+    return text
 
 class CustomerView:
 
@@ -837,21 +843,10 @@ class CustomerView:
         should_continue: bool = True
         while (should_continue):
             local_purchase_history: dict[int, PurchaseHistoryEntry] = dict()
-            # purchase_history_query_str = """
-            #     SELECT p.*, d.*, s.*, prod.product_name, a.line1
-            #     FROM deliveries as d
-            #     INNER JOIN purchases as p ON d.purchase_id = p.id AND p.customer_id = %s
-            #     INNER JOIN product_sales as s ON p.id = s.purchase_id
-            #     INNER JOIN products as prod ON s.product_id = prod.id
-            #     INNER JOIN addresses as a ON d.address_id = a.id
-            #     ORDER BY d.id
-            #     LIMIT 25
-            #     OFFSET %s
-            # """
             purchase_history_query = sql.SQL("""
                 SELECT p.*, d.*, s.*, prod.product_name, a.line1
-                FROM purchases as p
-                INNER JOIN deliveries as d ON d.purchase_id = p.id AND p.customer_id = %s
+                FROM deliveries as d
+                INNER JOIN purchases as p ON d.purchase_id = p.id AND p.customer_id = %s
                 INNER JOIN product_sales as s ON p.id = s.purchase_id
                 INNER JOIN products as prod ON s.product_id = prod.id
                 INNER JOIN addresses as a ON d.address_id = a.id
@@ -905,7 +900,7 @@ class CustomerView:
                     local_purchase_history[purchase.id].sales[sale.id] = (sale, product_name)
 
             # Pretty printing the table
-            purchase_history_headers = ["Purchase ID", "Items in Purchase", "Delivery Status"]
+            purchase_history_headers = ["Purchase\nID", "Items in Purchase", "Delivery Status"]
             purchase_history_table_entries = list()
             for id, purchase in local_purchase_history.items():
                 sales_str = ""
@@ -917,7 +912,7 @@ class CustomerView:
                 for sale_id, sale_info in purchase.sales.items():
                     sale = sale_info[0]
                     product_name = sale_info[1]
-                    sales_str += f"- {product_name}: {sale.quantity} (${(sale.price_per_item * sale.quantity).quantize(Decimal("0.00"))})\n"
+                    sales_str += f"- {strict_truncate_str(product_name, 20)}: {sale.quantity} (${(sale.price_per_item * sale.quantity).quantize(Decimal("0.00"))})\n"
                     total_price += sale.price_per_item * sale.quantity
 
                 # Creating the deliveries str
@@ -927,7 +922,7 @@ class CustomerView:
                     address_line1 = delivery_info[1]
                     deliveries_str += f"""
 - Delivery ID: {delivery_id}
-    - Shipped to: {address_line1}
+    - Shipped to: {textwrap.fill(address_line1, 25)}
     - Status: {delivery.delivery_status}
                     """
                     if (delivery.shipped_on != None):
