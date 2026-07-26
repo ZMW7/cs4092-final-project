@@ -165,6 +165,34 @@ class ModeratorView:
         print("\n== Unreviewed Reports ==")
         print(tabulate(unreviewed_reports_table_entries, headers=unreviewed_reports_table_headers, tablefmt='fancy_grid'))
 
+    def display_product_removal_history(self):
+        # Defining and executing the query
+        self.cursor.execute(
+            sql.SQL("""
+                SELECT product_id, seller_id, removed_at
+                FROM product_removals
+                WHERE removed_by = %s
+            """),
+            (self._moderator_info.id,)
+        )
+        result_rows = self.cursor.fetchall()
+        removal_history_table_headers: list[str] = ["Product ID", "Merchant ID", "Removal Date"]
+        print(tabulate(result_rows, headers=removal_history_table_headers, tablefmt='fancy_grid'))
+
+    def display_merchant_removal_history(self):
+        # Defining and executing the query
+        self.cursor.execute(
+            sql.SQL("""
+                SELECT seller_id, removed_at
+                FROM seller_removals
+                WHERE removed_by = %s
+            """),
+            (self._moderator_info.id,)
+        )
+        result_rows = self.cursor.fetchall()
+        removal_history_table_headers: list[str] = ["Merchant ID", "Removal Date"]
+        print(tabulate(result_rows, headers=removal_history_table_headers, tablefmt='fancy_grid'))
+
     def get_product_removal_input(self) -> int:
         """
         Prompts the user to enter the product ID of a product to remove.
