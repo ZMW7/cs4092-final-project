@@ -59,7 +59,9 @@ class ModeratorView:
         try:
             self.cursor.execute(
                 sql.SQL("""
-                    DELETE FROM sellers WHERE id = %s
+                    UPDATE sellers
+                    SET removed_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
                 """),
                 (merchant_id,)
             )
@@ -69,7 +71,9 @@ class ModeratorView:
         # Deleting all products
         self.cursor.execute(
             sql.SQL("""
-                DELETE FROM products WHERE seller_id = %s
+                UPDATE products
+                SET removed_at = CURRENT_TIMESTAMP
+                WHERE seller_id = %s
                 RETURNING id
             """),
             (merchant_id,)
@@ -116,14 +120,20 @@ class ModeratorView:
         try:
             self.cursor.execute(
                 sql.SQL("""
-                    DELETE FROM products WHERE id = %s
+                    UPDATE products
+                    SET removed_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
                     RETURNING id, seller_id
                 """),
                 (product_id,)
             )
-        except:
+        except Exception as e:
+            print(e)
             return False
-        removed_product_id, seller_id = self.cursor.fetchall()[0]
+        result_rows = self.cursor.fetchall()
+        if (len(result_rows) < 1):
+            print(f"Product with ID {product_id} does not exist.")
+        removed_product_id, seller_id = result_rows[0]
         self.cursor.execute(
             sql.SQL("""
                 INSERT INTO product_removals (removed_by, seller_id, product_id) VALUES
@@ -155,7 +165,7 @@ class ModeratorView:
                 SELECT r.id, r.customer_id, r.product_id, r.created_at, r.reason
                 FROM reports AS r
                 INNER JOIN products AS p ON p.id = r.product_id
-                WHERE r.reviewed_by IS NULL
+                WHERE r.reviewed_by IS NULL AND p.removed_at IS NULL
                 ORDER BY r.created_at
             """)
         )
@@ -274,16 +284,22 @@ class ModeratorView:
                     case 'a':
                         # Remove product
                         product_id = self.get_product_removal_input()
-                        self.remove_product(product_id)
+                        if (self.remove_product(product_id)):
+                            print("Product successfully removed.")
+                        else:
+                            print("Something went wrong.")
                     case 's':
                         # Remove seller
                         merchant_id = self.get_merchant_removal_input()
-                        self.remove_merchant(merchant_id)
+                        if (self.remove_merchant(merchant_id)):
+                            print("Merchant successfully removed")
+                        else:
+                            print("Something went wrong.")
                     case 'h':
                         # See removal history
                         display_function: Callable | None = self.get_history_function_based_on_input()
                         if (display_function != None):
-                            display_function(self)
+                            display_function()
                     case 'x':
                         # Sign out
                         should_continue = False
