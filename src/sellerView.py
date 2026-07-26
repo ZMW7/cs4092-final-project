@@ -353,9 +353,9 @@ class SellerView:
                         # Adjust prices
                         product_id, price = self.get_user_input_for_adjusting_price()
                         self.adjust_product_price(product_id, price)
-                    case 's':
+                    case 's' | 'S':
                         # Adjust stock
-                        product_id, stock_change = self.get_user_input_for_adjusting_price()
+                        product_id, stock_change = self.get_user_input_for_adjusting_stock()
                         self.add_to_product_stock(product_id=product_id, stock_change=stock_change)
                     case 'd':
                         self.display_data_menu_and_get_user_input()
@@ -407,4 +407,4 @@ class SellerView:
             return False
 
     def _product_price_is_valid(self, price: Decimal) -> bool:
-        return price >= 0
+        return 0 <= price < 10e8
