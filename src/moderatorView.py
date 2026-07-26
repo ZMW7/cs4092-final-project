@@ -246,6 +246,31 @@ class ModeratorView:
                 print("Invalid merchant ID. Please try again.")
         return merchant_id
 
+    def handle_report_review_screen(self):
+        pass
+
+    def get_user_choice_in_response_to_display_of_unreviewed_reports(self) -> Callable | None:
+        """
+        Prompts the user to select an action to take in response to a previously displayed table of unreviewed reports
+
+        Returns
+        -------
+            Callable
+                The function to be called next according to the user's input
+            None
+                An invalid item is inputted
+        """
+        controls_table_headers: list[str] = ["Review Report"]
+        controls_table_entries: list[list[str]] = [['e']]
+        print(tabulate(controls_table_entries, headers=controls_table_headers, tablefmt='simple'))
+        user_response: str = input()
+        match user_response:
+            case 'e' | 'E':
+                return self.handle_report_review_screen
+            case _:
+                print("Invalid choice")
+                return None
+
     def get_history_function_based_on_input(self) -> Callable | None:
         """
         Prompts the user to select a form of history to view (removed products, removed merchants)
@@ -271,7 +296,7 @@ class ModeratorView:
     def display_main_menu_and_get_user_input(self):
         should_continue: bool = True
         while (should_continue):
-            controls_table_headers: list[str] = ["View Unreviewed Reports", "Remove Product", "Remove Seller", "History", "Sign out"]
+            controls_table_headers: list[str] = ["Review Reports", "Remove Product", "Remove Seller", "History", "Sign out"]
             controls_table_entries: list[list[str]] = [['v', 'a', 's', 'h', 'x']]
             print(tabulate(controls_table_entries, headers=controls_table_headers, tablefmt='simple'))
             user_response: str = ""
@@ -279,8 +304,12 @@ class ModeratorView:
                 user_response = input()
                 match user_response:
                     case 'v':
-                        # View unreviewed reports
+                        # Review Reports
                         self.display_unreviewed_reports_for_unreviewed_products()
+                        next_function: Callable | None = self.get_user_choice_in_response_to_display_of_unreviewed_reports()
+                        if (next_function == None):
+                            continue
+                        next_function()
                     case 'a':
                         # Remove product
                         product_id = self.get_product_removal_input()
