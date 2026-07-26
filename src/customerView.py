@@ -475,30 +475,6 @@ class CustomerView:
         created_at: datetime | None = None
         total_cost = Decimal(0.00)
 
-        # Creating the purchase
-        self.cur.execute("""
-            INSERT INTO purchases (customer_id, payment_method_id) VALUES
-            (%s, %s)
-            RETURNING id, created_at
-            """,
-            (self._customer_id, paymentMethod.id,)
-        )
-        self.conn.commit()
-        try:
-            result = self.cur.fetchall()
-            purchase_id = int(result[0][0])
-            created_at = result[0][1]
-        except ValueError as e:
-            print(f"Error creating purchase: {e}")
-            return
-
-        purchase = PurchaseEntry(
-            id=purchase_id,
-            created_at=created_at,
-            customer_id=self._customer_id,
-            payment_method_id=paymentMethod.id
-        )
-
         product_names_query = """
             SELECT id, product_name, price FROM products WHERE id IN (
         """
@@ -529,6 +505,30 @@ class CustomerView:
             case _:
                 print("Purchase canceled.")
                 return None
+
+        # Creating the purchase
+        self.cur.execute("""
+            INSERT INTO purchases (customer_id, payment_method_id) VALUES
+            (%s, %s)
+            RETURNING id, created_at;
+            """,
+            (self._customer_id, paymentMethod.id,)
+        )
+        self.conn.commit()
+        try:
+            result = self.cur.fetchall()
+            purchase_id = int(result[0][0])
+            created_at = result[0][1]
+        except ValueError as e:
+            print(f"Error creating purchase: {e}")
+            return
+
+        purchase = PurchaseEntry(
+            id=purchase_id,
+            created_at=created_at,
+            customer_id=self._customer_id,
+            payment_method_id=paymentMethod.id
+        )
 
         # Creating the insertion queries
         sale_insertions_query: str = "INSERT INTO product_sales (purchase_id, product_id, price_per_item, quantity) VALUES "
