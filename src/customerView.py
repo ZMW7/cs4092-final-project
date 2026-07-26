@@ -99,7 +99,7 @@ class CustomerView:
         self.show_menu()
 
     def show_menu(self):
-        user_option_headers = ["Browse Products", "Checkout", "My Purchases", "Settings", "Sign Out"]
+        user_option_headers = ["Browse Products", "Checkout", "My Purchases", "Sign Out"]
         user_options = [["p", "c", "h", "s", "x"]]
         should_continue = True
         while (should_continue):
@@ -115,9 +115,6 @@ class CustomerView:
                 case 'h' | 'H':
                     # My purchases
                     should_continue = self.display_purchase_history(0)
-                case 's' | 'S':
-                    # Settings
-                    should_continue = False
                 case 'x' | 'X':
                     should_continue = False
                 case _:
