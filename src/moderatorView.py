@@ -146,11 +146,53 @@ class ModeratorView:
     def display_previously_reviewed_reports(self):
         pass
 
-    def display_unreviewed_reports_for_listed_products(self):
+    def display_unreviewed_reports_for_unreviewed_products(self):
         pass
 
     def handle_report_review_input(self):
         pass
+
+    def get_product_removal_input(self) -> int:
+        """
+        Prompts the user to enter the product ID of a product to remove.
+
+        Returns
+        ------
+            int
+                The ID of the product to be removed
+        """
+        print("\n== Product Removal ==")
+        user_response: str = ""
+        product_id: int | None = None
+        while (user_response == ""):
+            user_response = input("Product ID: ")
+            try:
+                product_id = int(user_response)
+            except ValueError:
+                user_response = ""
+                print("Invalid product ID. Please try again.")
+        return product_id
+
+    def get_merchant_removal_input(self) -> int:
+        """
+        Prompts the user to enter the ID of a merchant to remove.
+
+        Returns
+        ------
+            int
+                The ID of the merchant to be removed
+        """
+        print("\n== Merchant Removal ==")
+        user_response: str = ""
+        merchant_id: int | None = None
+        while (user_response == ""):
+            user_response = input("Merchant ID: ")
+            try:
+                merchant_id = int(user_response)
+            except ValueError:
+                user_response = ""
+                print("Invalid merchant ID. Please try again.")
+        return merchant_id
 
     def display_main_menu_and_get_user_input(self):
         should_continue: bool = True
@@ -167,10 +209,12 @@ class ModeratorView:
                         pass
                     case 'a':
                         # Remove product
-                        pass
+                        product_id = self.get_product_removal_input()
+                        self.remove_product(product_id)
                     case 's':
                         # Remove seller
-                        pass
+                        merchant_id = self.get_merchant_removal_input()
+                        self.remove_merchant(merchant_id)
                     case 'h':
                         # See removal history
                         pass
