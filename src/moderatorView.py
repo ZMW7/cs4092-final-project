@@ -219,7 +219,7 @@ class ModeratorView:
                 match user_response:
                     case 'v':
                         # View unreviewed reports
-                        pass
+                        self.display_unreviewed_reports_for_unreviewed_products()
                     case 'a':
                         # Remove product
                         product_id = self.get_product_removal_input()
