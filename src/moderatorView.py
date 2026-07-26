@@ -3,6 +3,7 @@ import psycopg
 from psycopg import sql
 from tabulate import tabulate
 import textwrap
+from collections.abc import Callable
 
 class ModeratorView:
     """
@@ -235,6 +236,28 @@ class ModeratorView:
                 print("Invalid merchant ID. Please try again.")
         return merchant_id
 
+    def get_history_function_based_on_input(self) -> Callable | None:
+        """
+        Prompts the user to select a form of history to view (removed products, removed merchants)
+
+        Returns
+        -------
+            Callable
+                The function to be called to display the requested information
+            None
+                If an invalid item is requested
+        """
+        user_response: str = input("Enter 'p' to see product removal history, or 'm' to see merchant removal history. ")
+        match user_response:
+            case 'p' | 'P':
+                return self.display_product_removal_history
+            case 'm' | 'M':
+                return self.display_merchant_removal_history
+            case _:
+                print("Invalid choice")
+                return None
+        
+
     def display_main_menu_and_get_user_input(self):
         should_continue: bool = True
         while (should_continue):
@@ -258,7 +281,9 @@ class ModeratorView:
                         self.remove_merchant(merchant_id)
                     case 'h':
                         # See removal history
-                        pass
+                        display_function: Callable | None = self.get_history_function_based_on_input()
+                        if (display_function != None):
+                            display_function(self)
                     case 'x':
                         # Sign out
                         should_continue = False
@@ -268,6 +293,6 @@ class ModeratorView:
 
     def begin_interaction(self):
         print(f"Welcome, {self._moderator_info.first_name} {self._moderator_info.last_name}.")
-        pass
+        self.display_main_menu_and_get_user_input()
 
     
