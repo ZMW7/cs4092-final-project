@@ -7,6 +7,12 @@ from datetime import datetime as datetime, date as dtdate
 import itertools
 import textwrap
 import readline # for up arrow support on linux / mac
+import enum
+
+class ReportReason(enum.StrEnum):
+    FALSE_ADVERTISING = "false advertising",
+    INNAPROPRIATE_CONTENT = "innapropriate content",
+    CUSTOM = "custom"
 
 class AddressEntry(NamedTuple):
     id: int
@@ -51,6 +57,13 @@ class RatingEntry(NamedTuple):
     customer_id: int
     product_id: int
     rating: int
+    created_at: datetime
+
+class ReportEntry(NamedTuple):
+    id: int
+    customer_id: int
+    reviewed_by: int | None
+    reason: str
     created_at: datetime
 
 class PurchaseHistoryEntry(NamedTuple):
@@ -951,6 +964,74 @@ class CustomerView:
         
         return True
 
+    def get_customer_report_and_report_product(self, product_id: int | None = None, report_reason: ReportReason | None = None) -> ReportEntry | None:
+        # Getting the product id
+        while (product_id == None):
+            product_id_str = input("Please enter the product ID: ")
+            try:
+                product_id = int(product_id_str)
+            except ValueError:
+                print("Invalid product id. Please try again.")
+                product_id = None
+
+        # Getting the report reason
+        if (report_reason == None):
+            # Printing out the table
+            report_options_headers = ["No.", "Reason"]
+            report_options_entries = [
+                (1, ReportReason.FALSE_ADVERTISING),
+                (2, ReportReason.INNAPROPRIATE_CONTENT),
+                (3, ReportReason.CUSTOM)
+            ]
+            num_of_report_options: int = len(report_options_entries)
+            selected_report_option_num: int | None = None
+            print(tabulate(report_options_entries, headers=report_options_headers, tablefmt='rounded_grid'))
+            while (report_reason == None):
+                user_response = input("Please select a report option.")
+                try:
+                    selected_report_option_num = int(user_response)
+                    if not (0 < selected_report_option_num <= num_of_report_options):
+                        print(f"Please select a valid report option, 1 - {num_of_report_options}")
+                        continue
+                except ValueError:
+                    print(f"Please select a valid report option, 1 - {num_of_report_options}")
+                    continue
+                report_reason = report_options_entries[selected_report_option_num - 1][1]
+                if (report_reason == ReportReason.CUSTOM):
+                    # Getting custom report reason.
+                    while (True):
+                        user_response = input("Please enter in the report reason.")
+                        if (len(user_response) > 60):
+                            print("Reason too long. Please try again (max 60 characters).")
+                        else:
+                            report_reason = user_response
+                            break
+
+        # Saving report in database
+        self.cur.execute(
+            sql.SQL("""
+                INSERT INTO reports (customer_id, reason) VALUES
+                (%s, %s)
+                RETURNING id, reviewed_by, created_at
+            """),
+            (self._customer_id, report_reason,)
+        )
+        self.conn.commit()
+        result_rows = self.cur.fetchall()
+        if (len(result_rows) == 0):
+            print("Something went wrong.")
+            return None
+
+        print("Your report has been submitted and will be reviewed.")
+
+        return ReportEntry(
+            id=result_rows[0][0],
+            customer_id=self._customer_id,
+            reviewed_by=result_rows[0][1],
+            reason=report_reason,
+            created_at=result_rows[0][2]
+        )
+
     def get_customer_rating_and_rate_product(self, product_id: int | None = None, rating: int | None = None) -> RatingEntry:
         """
         Gets rating from user input and adds rating of a given product
@@ -1081,8 +1162,10 @@ class CustomerView:
                 # Rate
                 self.get_customer_rating_and_rate_product()
                 return True
-            case 'r' | 'R':
-                return False
+            case 'f' | 'F':
+                # Report
+                self.get_customer_report_and_report_product()
+                return True
             case 'v' | 'V':
                 # View cart
                 self.display_current_cart()
