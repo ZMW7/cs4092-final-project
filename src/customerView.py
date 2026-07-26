@@ -100,7 +100,7 @@ class CustomerView:
 
     def show_menu(self):
         user_option_headers = ["Browse Products", "Checkout", "My Purchases", "Sign Out"]
-        user_options = [["p", "c", "h", "s", "x"]]
+        user_options = [["p", "c", "h", "x"]]
         should_continue = True
         while (should_continue):
             print(tabulate(user_options, user_option_headers, tablefmt = "fancy_grid"))
