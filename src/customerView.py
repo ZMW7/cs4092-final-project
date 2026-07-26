@@ -9,7 +9,7 @@ import textwrap
 import readline # for up arrow support on linux / mac
 import enum
 
-from commonTypes import AddressEntry, PaymentMethodEntry, PurchaseEntry, ProductSalesEntry, DeliveryEntry, RatingEntry, ReportEntry, PurchaseHistoryEntry
+from commonTypes import AddressEntry, PaymentMethodEntry, PurchaseEntry, ProductSalesEntry, DeliveryEntry, RatingEntry, ReportReason, PurchaseHistoryEntry
 
 def strict_truncate_str(text: str, max_length: int = 15):
     if len(text) > max_length:
