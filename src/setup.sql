@@ -302,9 +302,9 @@ VALUES              (   'Small toothpaste tube',        1500,   1,          9.99
 
 -- Moderators
 INSERT INTO moderators (first_name, last_name,      email_address,                  password_hash) VALUES
-                       ('Jim',      'Bob',          'jim.bob@jimbob.com',           '$2a$12$BDiZ4hcX7JSscaXz4PZCkO3f0fbK42K3.oRIGwljBCnL5IoyZX2..'),
-                       ('Adams',    'Auditor',      'adams.audit@gmail.com',        '$2a$12$HBCmkCli.zgE3.md7P7zpOWChjQKkHsrSEJKagZ1fFjVu.TVabLSe'),
-                       ('Zachary',  'W',            'Zachary.W@example.com',        '$2a$12$DiooaYFiMGFxG/NEnjNMD.dCk3qaePdVrLKA2U8k6uwfuEnaLANEK');
+                       ('Jim',      'Bob',          'jim.bob@jimbob.com',           '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'), -- Password: 'mod'
+                       ('Adams',    'Auditor',      'adams.audit@gmail.com',        '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'), -- Password: 'mod'
+                       ('Zachary',  'W',            'Zachary.W@example.com',        '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'); -- Password: 'mod'
 
 -- Ratings
 INSERT INTO ratings (   customer_id,    product_id, rating)
