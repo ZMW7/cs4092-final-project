@@ -5,9 +5,9 @@ CREATE DATABASE company_db;
 
 CREATE TABLE customers (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    primary_address_id INTEGER,
+    primary_address_id INTEGER UNIQUE,
     preferred_payment_id INTEGER,
-    email_address VARCHAR(255) NOT NULL UNIQUE,
+    email_address VARCHAR(320) NOT NULL UNIQUE,
     password_hash CHAR(60) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -67,7 +67,7 @@ CREATE TABLE moderators (
 CREATE TABLE reports (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     customer_id INTEGER NOT NULL,
-    reviewed_by INTEGER NOT NULL,
+    reviewed_by INTEGER,
     reason VARCHAR(60) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -105,7 +105,7 @@ CREATE TABLE deliveries (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     purchase_id INTEGER NOT NULL,
     address_id INTEGER NOT NULL,
-    delivery_status varchar(63),
+    delivery_status varchar(63) DEFAULT 'processing',
     shipped_on DATE,
     estimated_delivery_time TIMESTAMPTZ
 );
@@ -225,12 +225,13 @@ INSERT INTO customers       (   email_address,          password_hash)
 VALUES                      (   'governor@ohio.gov',    '$2a$12$5GlVmholEAkJ1D8dMPNxLeOVQioEdDU463.qukzNMK/X40h3UeYUO');
 
 INSERT INTO customers   (email_address,                         password_hash)
-VALUES                  ('masayoshi.takanaka@takanaka.com',     '$2a$12$JqlCLqHJtIoJKZHoHg6y9eCBdcUxH0b7hz9oxswuNTkjBYfuH2ete');
+VALUES                  ('masayoshi.takanaka@takanaka.com',     '$2a$12$UEykOXseO3UtE5L29NuaE.cfJLVJpzRFDeWJkY/i9VLki0lyBLFxG'); -- Password: takanaka
 
 INSERT INTO customers   (email_address,                         password_hash)
 VALUES                  ('minecraftiscool@gmail.com',           '$2a$12$JqlCLqHJtIoJKZHoHg6y9eCBdcUxH0b7hz9oxswuNTkjBYfuH2ete'),
                         ('amongusiscool@gmail.com',             '$2a$12$fUNEeYsGvcdP5vQ3Sw/N2Owu52oMB0g5vNSs02kuzUIsgrV5vlpuq'),
-                        ('friendlygreeter@gmail.com',           '$2a$12$KWA.ucO/YKflNcOJeCAPMOniKk0Y/K0xrLz7U/nuK4xkFIo0TiUI.');
+                        ('friendlygreeter@gmail.com',           '$2a$12$KWA.ucO/YKflNcOJeCAPMOniKk0Y/K0xrLz7U/nuK4xkFIo0TiUI.'),
+                        ('a@b.com',                             '$2a$12$peD6mdrsmjhdFpgDjx9B9uDtuISlAc9uarS3v2xqYUlsadHWYdhem'); -- Pasword: test
 
 INSERT INTO customers       (   email_address,          password_hash) 
 VALUES                      (   'primeminister@uk.gov', '$2a$12$gxPPc.V/70vD9ZkuykgB6uJyxct68nBkb8kVBATDmsiPlKwY4Zqra')
@@ -360,3 +361,7 @@ INSERT INTO deliveries  (   purchase_id,    address_id,     delivery_status,    
                         (   2,              8,              'lost',             '2026-06-23',   NULL                        ),
                         (   4,              8,              'shipping',         '2026-06-23',   '2026-06-30 12:00:00+00'    ),
                         (   3,              8,              'delivered',        '2026-06-23',   '2026-06-23 17:00:00+00'    );
+
+-- Reports
+INSERT INTO reports     (   customer_id,    reviewed_by,    reason                      )   VALUES
+                        (   1,              1,              'false advertising'         );
