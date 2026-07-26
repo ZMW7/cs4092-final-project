@@ -1,16 +1,16 @@
 TABLE customers {
   id uuid [primary key]
+  email_address varchar [not null]
+  password_hash char [not null]
   created_at datetime [not null]
   primary_address_id uuid
   preferred_payment_id uuid
-  email_address varchar [not null]
-  password_hash char [not null]
 }
 
 TABLE addresses {
   id uuid [primary key]
   country varchar [not null]
-  administrative_division varchar [not null]
+  administrative_division varchar
   city varchar [not null]
   line1 varchar [not null]
   line2 varchar
@@ -32,6 +32,7 @@ TABLE products {
   id uuid [primary key]
   stock integer [not null]
   seller_id uuid [not null]
+  price decimal [not null]
   created_at datetime [not null]
 }
 
@@ -52,7 +53,7 @@ TABLE moderators {
   created_at datetime [not null]
   first_name varchar [not null]
   last_name varchar [not null]
-  email varchar [not null]
+  email_address varchar [not null]
   password_hash varchar [not null]
 }
 
@@ -68,7 +69,7 @@ TABLE reports {
 // so instead of storing the remover as a column
 // in the products table, a new table is made
 TABLE product_removals {
-  reviewer uuid [not null]
+  removed_by uuid [not null]
   product_id uuid [not null]
   removed_at datetime [not null]
 }
@@ -77,7 +78,7 @@ TABLE product_removals {
 // so instead of storing the remover as a column
 // in the sellers table, a new table is made
 TABLE seller_removals {
-  reviewer uuid [not null]
+  removed_by uuid [not null]
   seller_id uuid [not null]
   removed_at datetime [not null]
 }
@@ -93,13 +94,15 @@ TABLE product_sales {
   id uuid [primary key]
   purchase_id uuid [not null]
   product_id uuid [not null]
+  price decimal [not null]
+  quantity integer [not null]
 }
 
 TABLE deliveries {
   id uuid [primary key]
   purchase_id uuid [not null]
   address_id uuid [not null]
-  status varchar
+  delivery_status varchar
   shipped_on date
   estimated_delivery_time datetime
 }
@@ -116,9 +119,9 @@ Ref: payment_methods.id > addresses.id // many payment methods to one address
 Ref: reports.customer_id > customers.id // many reports can be made by one customer, but each report is made by only one customer
 Ref: reports.reviewed_by > moderators.id
 
-Ref: product_removals.reviewer > moderators.id
+Ref: product_removals.removed_by > moderators.id
 Ref: product_removals.product_id - products.id
-Ref: seller_removals.reviewer > moderators.id
+Ref: seller_removals.removed_by > moderators.id
 Ref: seller_removals.seller_id > sellers.id
 
 // Products
