@@ -55,6 +55,9 @@ class ModeratorView:
         pass
 
     def handle_report_review_input(self):
+        pass
+
+    def display_main_menu_and_get_user_input(self):
         should_continue: bool = True
         while (should_continue):
             controls_table_headers: list[str] = ["View Unreviewed Reports", "Remove Product", "Remove Seller", "History", "Sign out"]
@@ -82,9 +85,6 @@ class ModeratorView:
                         return
                     case _:
                         user_response = ""
-
-    def display_main_menu_and_get_user_input(self):
-        pass
 
     def begin_interaction(self):
         print(f"Welcome, {self._moderator_info.first_name} {self._moderator_info.last_name}.")
