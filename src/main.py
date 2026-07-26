@@ -173,6 +173,7 @@ def authenticateSeller():
 def authenticateModerator():
     print("== Moderator Login ==")
     print("Enter 'x' to return to the previous menu.")
+    is_logged_in: bool = False
     with psycopg.connect(**DB_PARAMS) as conn:
             with conn.cursor() as cur:
                 while not (is_logged_in):
