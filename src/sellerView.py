@@ -12,10 +12,11 @@ class SellerView:
         self.connection: psycopg.connection.Connection = conn
         self.cursor: psycopg.cursor.Cursor = cur
 
+        print(f'Seller name is {username}')
         # Getting seller ID
         self.cursor.execute(
             sql.SQL("""
-                SELECT id FROM sellers AS s WHERE s.id = %s
+                SELECT s.id FROM sellers AS s WHERE s.seller_name = %s
             """),
             (username,)
         )
@@ -35,7 +36,7 @@ class SellerView:
             sql.SQL("""
                 SELECT id, product_name, stock, price, created_at FROM products AS p WHERE p.seller_id = %s
             """),
-            (self._seller_id)
+            (self._seller_id,)
         )
         result_rows = self.cursor.fetchall()
         products: list[ProductEntry] = list()
@@ -43,10 +44,10 @@ class SellerView:
             products.append(ProductEntry(
                 id=row[0],
                 product_name=row[1],
-                stock=row[3],
+                stock=row[2],
                 seller_id=self._seller_id,
-                price=row[4],
-                created_at=row[5]
+                price=row[3],
+                created_at=row[4]
             ))
 
         # Creating output table
@@ -66,12 +67,12 @@ class SellerView:
             self.cursor.execute(
                 sql.SQL("""
                     SELECT s.quantity, p.created_at
-                    FROM product_sales AS s
-                    INNER JOIN purchases as p
-                        ON p.product_id = %(product_id)s AND p.created_at < %(end_datetime)s
+                    FROM purchases AS p
+                    INNER JOIN product_sales as s
+                        ON s.purchase_id = p.id AND p.created_at < %(end_datetime)s
                     INNER JOIN products as prod
-                        ON prod.seller_id = %(seller_id)s
-                    WHERE s.product_id = %(product_id)s
+                        ON prod.id = s.product_id AND prod.id = %(product_id)s AND prod.seller_id = %(seller_id)s
+                    ORDER BY p.created_at
                 """),
                 {"product_id": product_id, "end_datetime": end_datetime, "seller_id": self._seller_id}
             )
@@ -80,29 +81,39 @@ class SellerView:
             self.cursor.execute(
                 sql.SQL("""
                     SELECT s.quantity, p.created_at
-                    FROM product_sales AS s
-                    INNER JOIN purchases as p
-                        ON p.product_id = %(product_id)s AND p.created_at >= %(start_datetime)s AND p.created_at < %(end_datetime)s
+                    FROM purchases as p
+                    INNER JOIN product_sales as s
+                        ON s.purchase_id = p.id AND p.created_at >= %(start_datetime)s AND p.created_at < %(end_datetime)s
                     INNER JOIN products as prod
-                        ON prod.seller_id = %(seller_id)s
-                    WHERE s.product_id = %(product_id)s
+                        ON prod.id = s.product_id AND prod.id = %(product_id)s AND prod.seller_id = %(seller_id)s
+                    ORDER BY p.created_at
                 """),
                 {"product_id": product_id, "start_datetime": start_datetime, "end_datetime": end_datetime, "seller_id": self._seller_id}
             )
         result_rows = self.cursor.fetchall()
 
+        # SELECT s.quantity, p.created_at  FROM purchases as p INNER JOIN product_sales AS s ON s.purchase_id = p.id INNER JOIN products AS prod ON prod.id = s.product_id AND prod.id = 5 ORDER BY p.created_at
+
+        # SELECT s.quantity, p.created_at FROM product_sales AS s INNER JOIN purchases as p ON p.id = 5 INNER JOIN products as prod ON prod.seller_id = 2 WHERE s.product_id = 5 ORDER BY p.created_at
+
         # Plotting data
         sales: list[int] = list()
         times: list[datetime] = list()
-        for row in result_rows:
-            sales.append(row[0])
-            sales.append(row[1])
+        previous_sum = 0
+        for index, row in enumerate(result_rows):
+            sales.append(row[0] + previous_sum)
+            times.append(row[1])
+            previous_sum += row[0]
 
-        plotext.plot(times, sales)
+        time_strings = plotext.datetimes_to_strings(times, output_form='Y-m-d H:M:S')
+
+        plotext.date_form(input_form='Y-m-d H:M:S', output_form='Y-m-d H:M:S')
+        plotext.plot(time_strings, sales)
         plotext.title(f"Sales of {product_id}")
         plotext.xlabel("Date and Time")
         plotext.ylabel("Sales")
         plotext.show()
+        plotext.clear_data()
         
 
     def add_product_to_market(self, product_name: str, stock: int, price: Decimal) -> ProductEntry | None:
@@ -126,13 +137,13 @@ class SellerView:
             stock=stock,
             seller_id=self._seller_id,
             price=price,
-            created_at=result_rows[0][2]
+            created_at=result_rows[0][1]
         )
         return added_product
 
     def adjust_product_price(self, product_id: int, price: Decimal) -> ProductEntry | None:
         # Defining and executing the query
-        self.cursor.exeucte(
+        self.cursor.execute(
             sql.SQL("""
                 UPDATE products
                 SET price = %(price)s
@@ -161,7 +172,7 @@ class SellerView:
 
     def add_to_product_stock(self, product_id: int, stock_change: int):
         # Defining and executing the query
-        self.cursor.exeucte(
+        self.cursor.execute(
             sql.SQL("""
                 UPDATE products
                 SET stock = stock + %(stock_change)s
@@ -199,7 +210,7 @@ class SellerView:
         product_name = user_response
 
         user_response = input("Stock: ")
-        while not (self._product_stock_string_is_valid(user_response)):
+        while not (self._product_stock_string_is_valid(user_response) and int(user_response) >= 0):
             print("Invalid stock amount. Please try again.", end=" ")
             user_response = input("Stock: ")
         product_stock = int(user_response)
@@ -236,7 +247,7 @@ class SellerView:
                     user_prompt += " (can be blank)"
                 user_prompt += ": "
                 date_string += input(user_prompt)
-                if not (can_be_none) or (can_be_none and len(user_response) > 0):
+                if not (can_be_none) or (can_be_none and len(date_string) > 0):
                     try:
                         result_date = date.fromisoformat(date_string)
                     except:
@@ -250,7 +261,8 @@ class SellerView:
                 user_prompt += "(can be blank)"
             user_prompt += ".\nAdd a 'Z' to the end for UTC time. Otherwise, system time zone is used. "
             user_prompt += "\nTime: "
-            user_response = input(user_prompt)
+            print(user_prompt, end='')
+            user_response = input()
             if not (can_be_none) or (can_be_none and len(user_response) > 0):
                 temp_date: date = result_date
                 if (temp_date == None):
@@ -305,8 +317,9 @@ class SellerView:
         product_id = self.get_user_input_for_product_id()
 
         # Getting the start datetime
-        print("= Start Datetime =")
+        print("\n= Start Datetime =")
         start_datetime = self.get_user_input_for_datetime(True)
+        print("\n= End Datetime =")
         end_datetime = self.get_user_input_for_datetime(True)
         if (end_datetime == None):
             end_datetime = datetime.now()
@@ -320,30 +333,37 @@ class SellerView:
 
     def get_main_menu_user_input(self):
         print(f"Merchant View ---------- {self._seller_name}")
-        controls_table_headers: list[str] = ["View Products", "Add Product", "Adjust Prices", "Adjust Stock", "See Data"]
-        controls_table_entries: list[list[str]] = [['v', 'a', 't', 's', 'd']]
-        print(tabulate(controls_table_entries, headers=controls_table_headers, tablefmt='simple'))
-        user_response = ""
-        while (user_response != ""):
-            user_response = input()
-            match user_response:
-                case 'v' | 'V':
-                    # View products
-                    self.display_current_products()
-                case 'a' | 'A':
-                    # Add product
-                    product_name, stock, price = self.get_user_input_for_adding_product()
-                    self.add_product_to_market(product_name=product_name, stock=stock, price=price)
-                case 't' | 'T':
-                    # Adjust prices
-                    product_id, price = self.get_user_input_for_adjusting_price()
-                    self.adjust_product_price(product_id, price)
-                case 's':
-                    # Adjust stock
-                    product_id, stock_change = self.get_user_input_for_adjusting_price()
-                    self.add_to_product_stock(product_id=product_id, stock_change=stock_change)
-                case 'd':
-                    self.display_data_menu_and_get_user_input()
+        should_continue: bool = True
+        while (should_continue):
+            controls_table_headers: list[str] = ["View Products", "Add Product", "Adjust Prices", "Adjust Stock", "See Data", "Sign Out"]
+            controls_table_entries: list[list[str]] = [['v', 'a', 't', 's', 'd', 'x']]
+            print(tabulate(controls_table_entries, headers=controls_table_headers, tablefmt='simple'))
+            user_response = ""
+            while (user_response == ""):
+                user_response = input()
+                match user_response:
+                    case 'v' | 'V':
+                        # View products
+                        self.display_current_products()
+                    case 'a' | 'A':
+                        # Add product
+                        product_name, stock, price = self.get_user_input_for_adding_product()
+                        self.add_product_to_market(product_name=product_name, stock=stock, price=price)
+                    case 't' | 'T':
+                        # Adjust prices
+                        product_id, price = self.get_user_input_for_adjusting_price()
+                        self.adjust_product_price(product_id, price)
+                    case 's':
+                        # Adjust stock
+                        product_id, stock_change = self.get_user_input_for_adjusting_price()
+                        self.add_to_product_stock(product_id=product_id, stock_change=stock_change)
+                    case 'd':
+                        self.display_data_menu_and_get_user_input()
+                    case 'x':
+                        should_continue = False
+
+    def beginInteraction(self):
+        self.get_main_menu_user_input()
 
 
     def _product_name_is_valid(self, product_name: str) -> bool:
@@ -380,8 +400,10 @@ class SellerView:
             return False
         try:
             decimal_price = self._convert_price_string_to_price(price_str)
+            if (decimal_price == None):
+                return False
             return self._product_price_is_valid(decimal_price)
-        except ValueError:
+        except:
             return False
 
     def _product_price_is_valid(self, price: Decimal) -> bool:
