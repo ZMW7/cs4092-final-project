@@ -323,9 +323,14 @@ INSERT INTO product_removals (  removed_by, product_id, seller_id)
 VALUES                       (  1,          7,          (SELECT DISTINCT seller_id FROM products WHERE id = 7)),
                              (  2,          8,          (SELECT DISTINCT seller_id FROM products WHERE id = 8));
 
+UPDATE products SET removed_at = (SELECT removed_at FROM product_removals WHERE product_id = 7) WHERE id = 7;
+UPDATE products SET removed_at = (SELECT removed_at FROM product_removals WHERE product_id = 8) WHERE id = 8;
+
 -- Seller removals
 INSERT INTO seller_removals (   removed_by, seller_id)
-VALUES                      (   3,          (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'));
+VALUES                      (   3,          (SELECT DISTINCT id FROM sellers WHERE seller_name = 'False Advertising LLC'));
+
+UPDATE sellers SET removed_at = (SELECT removed_at FROM seller_removals WHERE seller_id = (SELECT DISTINCT id FROM sellers WHERE seller_name = 'False Advertising LLC')) WHERE seller_name = 'False Advertising LLC';
 
 -- Purchases
 INSERT INTO purchases   (   customer_id,                                                    payment_method_id)
