@@ -364,4 +364,4 @@ INSERT INTO deliveries  (   purchase_id,    address_id,     delivery_status,    
 
 -- Reports
 INSERT INTO reports     (   customer_id,    reviewed_by,    reason                      )   VALUES
-                        (   1,              1,              'False advertising'         );
+                        (   1,              1,              'false advertising'         );
