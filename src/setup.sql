@@ -276,12 +276,12 @@ UPDATE customers SET primary_address_id = 7, preferred_payment_id = 7 WHERE id =
 
 -- Sellers
 INSERT INTO sellers (seller_name, password_hash)
-VALUES              ('Crest',                   '$2a$12$2q4eH8.qZyXuS3.SzZyN8uXR.9YhUOUj98vLhFiYo.pzmrQvbje8G'),
-                    ('Vita Coco',               '$2a$12$EqU0iuW.Wqk5EJQPH7Krg.ElgU.epj2stZ0mJ4Rw4Raby0jsSigVa'),
-                    ('Half Priced Books',       '$2a$12$YYAoQEqPVdaQsq.dQN8coeX2tFrtIQZwDI6/nlMkh.1Hmc57XBNgG'),
-                    ('Illegal Products LLC',    '$2a$12$9uJg6WBGv6klBftd1kzni.2knF5rI2YGoEqMT2qG7DDymXjmw6y.e'),
-                    ('False Advertising LLC',   '$2a$12$j1nnTr.QPz1NzALc1z6afuRPi8c75xRPfgMxRj7TTuNtZLoy9bAeO'),
-                    ('Cool Guitars LLC',        '$2a$12$KfTVyvWCglrCobOV/FCT.O2rpJEJSlQExbhVeSaf82OoKJQVgR8E2');
+VALUES              ('Crest',                   '$2a$12$hkQz1.MtMaHP4dl5zal2WOJE0oiQdv.O3RqAGBbDIk3yDvZoS1E.6'), -- Password: Crest
+                    ('Vita Coco',               '$2a$12$qxoFn5PvqTt1AjyafnxCVuU3x9V.97J/trfahmUP3vcTloAgi..lW'), -- Password: Vita Coco
+                    ('Half Priced Books',       '$2a$12$MSsl1XFuFtuVZ6fqSNkkxuyCG9i7gOrnad2caSA62Uwlm9hTk6mB6'), -- Password: Half Priced Books
+                    ('Illegal Products LLC',    '$2a$12$wyIOmKNqtGWpmUe9I0sCzuSqWGymjDdhvswKw7W2fjuqdsfcEAVSu'), -- Password: Illegal Products LLC
+                    ('False Advertising LLC',   '$2a$12$jES7/Ep15QxecJZpyjlKteHfBcifUc.XJ4e8eljRkGK7X9N3cw056'), -- Password: False Advertising LLC
+                    ('Cool Guitars LLC',        '$2a$12$lSmhhR3c/B0oSbGTGNd1G.SXmtq50HfQVKSOaAXySHMlRwPx1myTW'); -- Password: Cool Guitars LLC
 
 -- Products
 INSERT INTO products (  product_name,                   stock,  seller_id,  price) 
