@@ -2,6 +2,7 @@ from commonTypes import *
 import psycopg
 from psycopg import sql
 from tabulate import tabulate
+import textwrap
 
 class ModeratorView:
     """
@@ -147,10 +148,22 @@ class ModeratorView:
         pass
 
     def display_unreviewed_reports_for_unreviewed_products(self):
-        pass
+        # Defining and executing the query
+        self.cursor.execute(
+            sql.SQL("""
+                SELECT r.id, r.customer_id, r.product_id, r.created_at, r.reason
+                FROM reports AS r
+                INNER JOIN products AS p ON p.id = r.product_id
+                WHERE r.reviewed_by IS NULL
+                ORDER BY r.created_at
+            """)
+        )
+        result_rows = self.cursor.fetchall()
 
-    def handle_report_review_input(self):
-        pass
+        unreviewed_reports_table_headers: list[str] = ["ID", "Customer ID", "Product ID", "Timestamp", "Reason"]
+        unreviewed_reports_table_entries: list[list[str]] = [ [row[0], row[1], row[2], row[3].strftime("%Y-%m-%d %H:%M:%S"), textwrap.fill(row[4], width=20)] for row in result_rows ]
+        print("\n== Unreviewed Reports ==")
+        print(tabulate(unreviewed_reports_table_entries, headers=unreviewed_reports_table_headers, tablefmt='fancy_grid'))
 
     def get_product_removal_input(self) -> int:
         """
