@@ -92,10 +92,6 @@ class SellerView:
             )
         result_rows = self.cursor.fetchall()
 
-        # SELECT s.quantity, p.created_at  FROM purchases as p INNER JOIN product_sales AS s ON s.purchase_id = p.id INNER JOIN products AS prod ON prod.id = s.product_id AND prod.id = 5 ORDER BY p.created_at
-
-        # SELECT s.quantity, p.created_at FROM product_sales AS s INNER JOIN purchases as p ON p.id = 5 INNER JOIN products as prod ON prod.seller_id = 2 WHERE s.product_id = 5 ORDER BY p.created_at
-
         # Plotting data
         sales: list[int] = list()
         times: list[datetime] = list()
@@ -110,6 +106,58 @@ class SellerView:
         plotext.date_form(input_form='Y-m-d H:M:S', output_form='Y-m-d H:M:S')
         plotext.plot(time_strings, sales)
         plotext.title(f"Sales of {product_id}")
+        plotext.xlabel("Date and Time")
+        plotext.ylabel("Sales")
+        plotext.show()
+        plotext.clear_data()
+
+    def display_earnings_chart(self, start_datetime: datetime | None, end_datetime: datetime | None):
+        if (end_datetime == None):
+            end_datetime = datetime.now()
+        if (start_datetime == None):
+            # Defining and executing the query 
+            self.cursor.execute(
+                sql.SQL("""
+                    SELECT s.quantity * s.price_per_item AS total_price, p.created_at
+                    FROM purchases AS p
+                    INNER JOIN product_sales as s
+                        ON s.purchase_id = p.id AND p.created_at < %(end_datetime)s
+                    INNER JOIN products as prod
+                        ON prod.id = s.product_id AND prod.seller_id = %(seller_id)s
+                    ORDER BY p.created_at
+                """),
+                {"end_datetime": end_datetime, "seller_id": self._seller_id}
+            )
+        else:
+            # Defining and executing the query
+            self.cursor.execute(
+                sql.SQL("""
+                    SELECT s.quantity * s.price_per_item AS total_price, p.created_at
+                    FROM purchases as p
+                    INNER JOIN product_sales as s
+                        ON s.purchase_id = p.id AND p.created_at >= %(start_datetime)s AND p.created_at < %(end_datetime)s
+                    INNER JOIN products as prod
+                        ON prod.id = s.product_id AND prod.seller_id = %(seller_id)s
+                    ORDER BY p.created_at
+                """),
+                {"start_datetime": start_datetime, "end_datetime": end_datetime, "seller_id": self._seller_id}
+            )
+        result_rows = self.cursor.fetchall()
+
+        # Plotting data
+        earnings: list[int] = list()
+        times: list[datetime] = list()
+        previous_sum = 0
+        for index, row in enumerate(result_rows):
+            earnings.append(float(row[0]) + previous_sum)
+            times.append(row[1])
+            previous_sum += float(row[0])
+
+        time_strings = plotext.datetimes_to_strings(times, output_form='Y-m-d H:M:S')
+
+        plotext.date_form(input_form='Y-m-d H:M:S', output_form='Y-m-d H:M:S')
+        plotext.plot(time_strings, earnings)
+        plotext.title(f"Earnings (USD)")
         plotext.xlabel("Date and Time")
         plotext.ylabel("Sales")
         plotext.show()
@@ -311,11 +359,7 @@ class SellerView:
 
         return (product_id, stock_change)
 
-    def get_user_input_for_sales_chart(self) -> tuple[int, datetime | None, datetime | None]:
-        print("== Sales Chart ==")
-        user_response: str = ""
-        product_id = self.get_user_input_for_product_id()
-
+    def get_start_and_end_datetimes_input(self) -> tuple[datetime | None, datetime | None]:
         # Getting the start datetime
         print("\n= Start Datetime =")
         start_datetime = self.get_user_input_for_datetime(True)
@@ -323,12 +367,39 @@ class SellerView:
         end_datetime = self.get_user_input_for_datetime(True)
         if (end_datetime == None):
             end_datetime = datetime.now()
+        return (start_datetime, end_datetime)
+
+    def get_user_input_for_sales_chart(self) -> tuple[int, datetime | None, datetime | None]:
+        print("== Sales Chart ==")
+        product_id = self.get_user_input_for_product_id()
+        start_datetime, end_datetime = self.get_start_and_end_datetimes_input()
         return (product_id, start_datetime, end_datetime)
 
 
     def display_data_menu_and_get_user_input(self):
-        product_id, start_datetime, end_datetime = self.get_user_input_for_sales_chart()
-        self.display_sales_chart(product_id, start_datetime, end_datetime)
+        print("==== Data Menu ===")
+        controls_table_headers: list[str] = ["View Sales Chart", "View Earnings Chart", "Back"]
+        controls_table_entries: list[list[str]] = [['s', 'e', 'x']]
+        print(tabulate(controls_table_entries, headers=controls_table_headers, tablefmt='simple'))
+        user_response = ""
+        while (user_response == ""):
+            user_response = input()
+            match user_response:
+                case 's' | 'S':
+                    # View sales chart
+                    product_id, start_datetime, end_datetime = self.get_user_input_for_sales_chart()
+                    self.display_sales_chart(product_id, start_datetime, end_datetime)
+                case 'e' | 'E':
+                    # View earnings chart
+                    print("== Earnings Chart ==")
+                    start_datetime, end_datetime = self.get_start_and_end_datetimes_input()
+                    self.display_earnings_chart(start_datetime, end_datetime)
+                case 'x' | 'X':
+                    # Back
+                    return
+                case _:
+                    user_response = ""
+                    
 
 
     def get_main_menu_user_input(self):
@@ -361,6 +432,8 @@ class SellerView:
                         self.display_data_menu_and_get_user_input()
                     case 'x':
                         should_continue = False
+                    case _:
+                        user_response = ""
 
     def beginInteraction(self):
         self.get_main_menu_user_input()
