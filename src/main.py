@@ -143,6 +143,8 @@ def moderator_credentials_are_valid(conn: psycopg.connection.Connection, cur: ps
         if (len(rows) != 1):
             return False
         stored_hash = rows[0][1]
+        if isinstance(stored_hash, str):
+            stored_hash = stored_hash.encode('utf-8')
         is_valid_password = bcrypt.checkpw(password.encode('utf-8'), stored_hash)
         if (email_address == rows[0][0] and is_valid_password):
             return True
@@ -184,6 +186,8 @@ def authenticateModerator():
                             cur.close()
                             conn.close()
                             getUserType()
+                        case _:
+                            pass
                     password = input("Password: ")
                     is_logged_in = moderator_credentials_are_valid(conn, cur, moderator_email, password)
                 moderator_view = ModeratorView(conn, cur, moderator_email=moderator_email)
