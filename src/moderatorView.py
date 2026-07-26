@@ -85,11 +85,11 @@ class ModeratorView:
         self.cursor.fetchall()
 
         #  Inserting into 'product_removals' table
-        product_removals_insertions: list[tuple[int, int]] = [ (self._moderator_info.id, deleted_product) for deleted_product in deleted_products ]
+        product_removals_insertions: list[tuple[int, int]] = [ (self._moderator_info.id, merchant_id, deleted_product) for deleted_product in deleted_products ]
         self.cursor.executemany(
             sql.SQL("""
-                INSERT INTO product_removals (removed_by, seller_id) VALUES
-                (%s, %s)
+                INSERT INTO product_removals (removed_by, seller_id, product_id) VALUES
+                (%s, %s, %s)
             """),
             product_removals_insertions
         )
@@ -114,26 +114,34 @@ class ModeratorView:
         try:
             self.cursor.execute(
                 sql.SQL("""
-                    DELETE FROM sellers WHERE id = %s
-                    RETURNING id
+                    DELETE FROM products WHERE id = %s
+                    RETURNING id, seller_id
                 """),
                 (product_id,)
             )
         except:
             return False
-        removed_product_id = self.cursor.fetchall()[0][0]
+        removed_product_id, seller_id = self.cursor.fetchall()[0]
         self.cursor.execute(
             sql.SQL("""
-                INSERT INTO seller_removals (removed_by, seller_id) VALUES
-                (%s, %s)
+                INSERT INTO product_removals (removed_by, seller_id, product_id) VALUES
+                (%s, %s, %s)
             """),
-            (self._moderator_info.id, removed_product_id)
+            (self._moderator_info.id, seller_id, removed_product_id)
         )
         self.connection.commit()
         return True
 
-    def get_number_of_product_removals_for_merchant(self, seller_id: int):
-        pass
+    def get_number_of_product_removals_for_merchant(self, seller_id: int) -> int:
+        self.cursor.execute(
+            sql.SQL("""
+                SELECT COUNT(*)
+                FROM product_removals
+                WHERE seller_id = %s
+            """),
+            (seller_id,)
+        )
+        return self.cursor.fetchall()[0][0]
 
     def display_previously_reviewed_reports(self):
         pass
