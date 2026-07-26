@@ -669,7 +669,6 @@ class CustomerView:
         result_rows = self.cur.fetchall()
         if (len(result_rows) < 1):
             # The customer has no primary payment method
-            print("It seems you don't have a preferred payment method.") # TODO: Remove this print statement
             payment_method = self.prompt_user_to_select_payment_method()
         else:
             payment_method_id, card_number, card_expiration, card_code, billing_address_id, country, administrative_division, city, line1, line2, postal_code = result_rows[0]
