@@ -39,11 +39,65 @@ class ModeratorView:
             email_address=moderator_email
         )
 
-    def remove_merchant(merchant_id: int):
-        pass
+    def remove_merchant(self, merchant_id: int) -> bool:
+        """
+        Removes a merchant from the platform.
 
-    def remove_product(product_id: int):
-        pass
+        Parameters
+        -------
+            merchant_id: int
+                The ID of the merchant being removed
+            
+        Returns
+        -------
+            bool
+                Whether or not a merchant with the given id was successfully removed
+        """
+        # Deleting the merchant
+        try:
+            self.cursor.execute(
+                sql.SQL("""
+                    DELETE FROM sellers WHERE id = %s
+                """),
+                (merchant_id,)
+            )
+        except:
+            return False
+        # Deleting all products
+        self.cursor.execute(
+            sql.SQL("""
+                DELETE FROM products WHERE seller_id = %s
+            """),
+            (merchant_id,)
+        )
+        self.connection.commit()
+        return True
+
+    def remove_product(self, product_id: int) -> bool:
+        """
+        Removes a product from the platform.
+
+        Parameters
+        -------
+            product_id: int
+                The ID of the product being removed
+            
+        Returns
+        -------
+            bool
+                Whether or not a product with the given id was successfully removed
+        """
+        try:
+            self.cursor.execute(
+                sql.SQL("""
+                    DELETE FROM sellers WHERE id = %s
+                """),
+                (product_id,)
+            )
+            self.connection.commit()
+        except:
+            return False
+        return True
 
     def get_number_of_product_removals_for_merchant(self, seller_id: int):
         pass
