@@ -9,7 +9,7 @@ import textwrap
 import readline # for up arrow support on linux / mac
 import enum
 
-from commonTypes import AddressEntry, PaymentMethodEntry, PurchaseEntry, ProductSalesEntry, DeliveryEntry, RatingEntry, ReportReason, PurchaseHistoryEntry
+from commonTypes import AddressEntry, PaymentMethodEntry, PurchaseEntry, ProductSalesEntry, DeliveryEntry, RatingEntry, ReportReason, ReportEntry, PurchaseHistoryEntry
 
 def strict_truncate_str(text: str, max_length: int = 15):
     if len(text) > max_length:
@@ -946,11 +946,11 @@ class CustomerView:
         # Saving report in database
         self.cur.execute(
             sql.SQL("""
-                INSERT INTO reports (customer_id, reason) VALUES
-                (%s, %s)
+                INSERT INTO reports (customer_id, product_id, reason) VALUES
+                (%s, %s, %s)
                 RETURNING id, reviewed_by, created_at
             """),
-            (self._customer_id, report_reason,)
+            (self._customer_id, product_id, report_reason,)
         )
         self.conn.commit()
         result_rows = self.cur.fetchall()
