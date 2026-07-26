@@ -70,6 +70,7 @@ CREATE TABLE reports (
     customer_id INTEGER NOT NULL,
     reviewed_by INTEGER,
     reason VARCHAR(60) NOT NULL,
+    product_id INTEGER NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -365,5 +366,5 @@ INSERT INTO deliveries  (   purchase_id,    address_id,     delivery_status,    
                         (   3,              8,              'delivered',        '2026-06-23',   '2026-06-23 17:00:00+00'    );
 
 -- Reports
-INSERT INTO reports     (   customer_id,    reviewed_by,    reason                      )   VALUES
-                        (   1,              1,              'false advertising'         );
+INSERT INTO reports     (   customer_id,    reviewed_by,    reason,                 product_id                                                                      )   VALUES
+                        (   1,              1,              'false advertising',    (SELECT DISTINCT id FROM products WHERE product_name = 'Some illegal product')  );
