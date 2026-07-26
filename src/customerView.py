@@ -9,67 +9,7 @@ import textwrap
 import readline # for up arrow support on linux / mac
 import enum
 
-class ReportReason(enum.StrEnum):
-    FALSE_ADVERTISING = "false advertising",
-    INNAPROPRIATE_CONTENT = "innapropriate content",
-    CUSTOM = "custom"
-
-class AddressEntry(NamedTuple):
-    id: int
-    country: str
-    administrative_division: str | None
-    city: str
-    line1: str
-    line2: str | None
-    postal_code: str
-    customer_id: int
-
-class PaymentMethodEntry(NamedTuple):
-    id: int
-    card_number: str
-    card_expiration: datetime
-    card_code: int
-    billing_address_id: int
-    customer_id: int
-
-class PurchaseEntry(NamedTuple):
-    id: int
-    created_at: datetime
-    customer_id: int
-    payment_method_id: int
-
-class ProductSalesEntry(NamedTuple):
-    id: int
-    purchase_id: int
-    product_id: int
-    price_per_item: Decimal
-    quantity: int
-
-class DeliveryEntry(NamedTuple):
-    id: int
-    purchase_id: int
-    address_id: int
-    delivery_status: str | None
-    shipped_on: dtdate | None
-    estimated_delivery_time: datetime | None
-
-class RatingEntry(NamedTuple):
-    customer_id: int
-    product_id: int
-    rating: int
-    created_at: datetime
-
-class ReportEntry(NamedTuple):
-    id: int
-    customer_id: int
-    reviewed_by: int | None
-    reason: str
-    created_at: datetime
-
-class PurchaseHistoryEntry(NamedTuple):
-    purchase: PurchaseEntry
-    deliveries: dict[int, tuple[DeliveryEntry, str]]
-    sales: dict[int, tuple[ProductSalesEntry, str]]
+from commonTypes import AddressEntry, PaymentMethodEntry, PurchaseEntry, ProductSalesEntry, DeliveryEntry, RatingEntry, ReportEntry, PurchaseHistoryEntry
 
 def strict_truncate_str(text: str, max_length: int = 15):
     if len(text) > max_length:
@@ -535,30 +475,6 @@ class CustomerView:
         created_at: datetime | None = None
         total_cost = Decimal(0.00)
 
-        # Creating the purchase
-        self.cur.execute("""
-            INSERT INTO purchases (customer_id, payment_method_id) VALUES
-            (%s, %s)
-            RETURNING id, created_at
-            """,
-            (self._customer_id, paymentMethod.id,)
-        )
-        self.conn.commit()
-        try:
-            result = self.cur.fetchall()
-            purchase_id = int(result[0][0])
-            created_at = result[0][1]
-        except ValueError as e:
-            print(f"Error creating purchase: {e}")
-            return
-
-        purchase = PurchaseEntry(
-            id=purchase_id,
-            created_at=created_at,
-            customer_id=self._customer_id,
-            payment_method_id=paymentMethod.id
-        )
-
         product_names_query = """
             SELECT id, product_name, price FROM products WHERE id IN (
         """
@@ -589,6 +505,30 @@ class CustomerView:
             case _:
                 print("Purchase canceled.")
                 return None
+
+        # Creating the purchase
+        self.cur.execute("""
+            INSERT INTO purchases (customer_id, payment_method_id) VALUES
+            (%s, %s)
+            RETURNING id, created_at;
+            """,
+            (self._customer_id, paymentMethod.id,)
+        )
+        self.conn.commit()
+        try:
+            result = self.cur.fetchall()
+            purchase_id = int(result[0][0])
+            created_at = result[0][1]
+        except ValueError as e:
+            print(f"Error creating purchase: {e}")
+            return
+
+        purchase = PurchaseEntry(
+            id=purchase_id,
+            created_at=created_at,
+            customer_id=self._customer_id,
+            payment_method_id=paymentMethod.id
+        )
 
         # Creating the insertion queries
         sale_insertions_query: str = "INSERT INTO product_sales (purchase_id, product_id, price_per_item, quantity) VALUES "

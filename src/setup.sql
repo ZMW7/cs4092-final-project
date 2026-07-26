@@ -51,7 +51,8 @@ CREATE TABLE ratings (
 
 CREATE TABLE sellers (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    seller_name VARCHAR(63) NOT NULL,
+    seller_name VARCHAR(63) NOT NULL UNIQUE,
+    password_hash CHAR(60) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -274,13 +275,13 @@ UPDATE customers SET primary_address_id = 4, preferred_payment_id = 4 WHERE id =
 UPDATE customers SET primary_address_id = 7, preferred_payment_id = 7 WHERE id = 7;
 
 -- Sellers
-INSERT INTO sellers (seller_name)
-VALUES              ('Crest'),
-                    ('Vita Coco'),
-                    ('Half Priced Books'),
-                    ('Illegal Products LLC'),
-                    ('False Advertising LLC'),
-                    ('Cool Guitars LLC');
+INSERT INTO sellers (seller_name, password_hash)
+VALUES              ('Crest',                   '$2a$12$hkQz1.MtMaHP4dl5zal2WOJE0oiQdv.O3RqAGBbDIk3yDvZoS1E.6'), -- Password: Crest
+                    ('Vita Coco',               '$2a$12$qxoFn5PvqTt1AjyafnxCVuU3x9V.97J/trfahmUP3vcTloAgi..lW'), -- Password: Vita Coco
+                    ('Half Priced Books',       '$2a$12$MSsl1XFuFtuVZ6fqSNkkxuyCG9i7gOrnad2caSA62Uwlm9hTk6mB6'), -- Password: Half Priced Books
+                    ('Illegal Products LLC',    '$2a$12$wyIOmKNqtGWpmUe9I0sCzuSqWGymjDdhvswKw7W2fjuqdsfcEAVSu'), -- Password: Illegal Products LLC
+                    ('False Advertising LLC',   '$2a$12$jES7/Ep15QxecJZpyjlKteHfBcifUc.XJ4e8eljRkGK7X9N3cw056'), -- Password: False Advertising LLC
+                    ('Cool Guitars LLC',        '$2a$12$lSmhhR3c/B0oSbGTGNd1G.SXmtq50HfQVKSOaAXySHMlRwPx1myTW'); -- Password: Cool Guitars LLC
 
 -- Products
 INSERT INTO products (  product_name,                   stock,  seller_id,  price) 
