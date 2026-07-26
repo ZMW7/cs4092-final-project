@@ -76,6 +76,7 @@ CREATE TABLE reports (
 CREATE TABLE product_removals (
     removed_by INTEGER NOT NULL,
     product_id INTEGER NOT NULL,
+    seller_id INTEGER NOT NULL,
     removed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (product_id, removed_at)
 );
@@ -315,9 +316,9 @@ VALUES              (   1,              1,          9),
                     (   5,              6,          7);
 
 -- Product removals
-INSERT INTO product_removals (  removed_by, product_id)
-VALUES                       (  1,          7),
-                             (  2,          8);
+INSERT INTO product_removals (  removed_by, product_id, seller_id)
+VALUES                       (  1,          7,          (SELECT DISTINCT seller_id FROM products WHERE id = 7)),
+                             (  2,          8,          (SELECT DISTINCT seller_id FROM products WHERE id = 8));
 
 -- Seller removals
 INSERT INTO seller_removals (   removed_by, seller_id)
