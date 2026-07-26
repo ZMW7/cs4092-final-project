@@ -1,5 +1,6 @@
 from customerView import CustomerView
 from sellerView import SellerView
+from moderatorView import ModeratorView
 import psycopg
 import bcrypt
 import sys
@@ -118,7 +119,7 @@ def authenticateCustomer():
         print("Invalid credentials, please try again")
     authenticateCustomer()
 
-def merchant_username_and_password_are_valid(conn: psycopg.connection, cur: psycopg.cursor, username: str, password: str) -> bool:
+def merchant_username_and_password_are_valid(conn: psycopg.connection.Connection, cur: psycopg.cursor.Cursor, username: str, password: str) -> bool:
     password_hash = hashPassword(password)
     try:
         cur.execute("SELECT seller_name, password_hash FROM sellers")
@@ -131,6 +132,20 @@ def merchant_username_and_password_are_valid(conn: psycopg.connection, cur: psyc
             is_valid_password = bcrypt.checkpw(password.encode("utf-8"), stored_hash)
             if username == row[0] and is_valid_password:
                 return True
+    except:
+        return False
+    return False
+
+def moderator_credentials_are_valid(conn: psycopg.connection.Connection, cur: psycopg.cursor.Cursor, email_address: str, password: str) -> bool:
+    try:
+        cur.execute("SELECT email_address, password_hash FROM moderators WHERE email_address = %s", (email_address,))
+        rows = cur.fetchall()
+        if (len(rows) != 1):
+            return False
+        stored_hash = rows[0][1]
+        is_valid_password = bcrypt.checkpw(password.encode('utf-8'), stored_hash)
+        if (email_address == rows[0][0] and is_valid_password):
+            return True
     except:
         return False
     return False
@@ -154,7 +169,24 @@ def authenticateSeller():
             print(f"Successfully logged in as {merchant_name}")
             seller_view = SellerView(conn, cur, merchant_name)
             seller_view.beginInteraction()
-        
+
+def authenticateModerator():
+    print("== Moderator Login ==")
+    print("Enter 'x' to return to the previous menu.")
+    with psycopg.connect(**DB_PARAMS) as conn:
+            with conn.cursor() as cur:
+                while not (is_logged_in):
+                    moderator_email = input("Email address: ")
+                    match moderator_email:
+                        case 'x':
+                            print("Returning to welcome page.")
+                            cur.close()
+                            conn.close()
+                            getUserType()
+                    password = input("Password: ")
+                    is_logged_in = moderator_credentials_are_valid(conn, cur, moderator_email, password)
+                moderator_view = ModeratorView(conn, cur, moderator_email=moderator_email)
+                moderator_view.begin_interaction()
 
 
 def getUserType():
@@ -168,7 +200,7 @@ def getUserType():
                 case 's':
                     authenticateSeller()
                 case 'm':
-                    pass
+                    authenticateModerator()
                 case _:
                     getUserType()
                     return
