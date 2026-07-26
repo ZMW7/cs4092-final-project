@@ -65,8 +65,8 @@ class ModeratorView:
                 """),
                 (merchant_id,)
             )
-            self.cursor.fetchall()
-        except:
+        except Exception as e:
+            print(e)
             return False
         # Deleting all products
         self.cursor.execute(
@@ -88,10 +88,9 @@ class ModeratorView:
             """),
             (self._moderator_info.id, merchant_id,)
         )
-        self.cursor.fetchall()
 
         #  Inserting into 'product_removals' table
-        product_removals_insertions: list[tuple[int, int]] = [ (self._moderator_info.id, merchant_id, deleted_product) for deleted_product in deleted_products ]
+        product_removals_insertions: list[tuple[int, int]] = [ (self._moderator_info.id, merchant_id, deleted_product[0]) for deleted_product in deleted_products ]
         self.cursor.executemany(
             sql.SQL("""
                 INSERT INTO product_removals (removed_by, seller_id, product_id) VALUES
@@ -99,7 +98,6 @@ class ModeratorView:
             """),
             product_removals_insertions
         )
-        self.cursor.fetchall()
         self.connection.commit()
         return True
 
@@ -143,6 +141,21 @@ class ModeratorView:
         )
         self.connection.commit()
         return True
+
+    def mark_report_as_reviewed(self, report_id: int) -> bool:
+        try:
+            self.cursor.execute(
+                sql.SQL("""
+                    UPDATE reports
+                    SET reviewed_by = %(moderator_id)s
+                    WHERE id = %(report_id)s
+                    RETURNING id
+                """),
+                {"moderator_id": self._moderator_info.id, "report_id": report_id}
+            )
+            return (len(self.cursor.fetchall() == 1))
+        except Exception as e:
+            return False
 
     def get_number_of_product_removals_for_merchant(self, seller_id: int) -> int:
         self.cursor.execute(
@@ -246,8 +259,76 @@ class ModeratorView:
                 print("Invalid merchant ID. Please try again.")
         return merchant_id
 
+    def get_info_for_report_review_screen(self, report_id: int) -> tuple[int, str, str, str] | None:
+        # Defining and executing the query
+        self.cursor.execute(
+            sql.SQL("""
+                SELECT prod.id, prod.product_name, s.seller_name, s.id, rep.reason
+                FROM reports as rep
+                INNER JOIN products as prod
+                    ON prod.id = rep.product_id
+                INNER JOIN sellers as s
+                    ON s.id = prod.seller_id
+                WHERE prod.removed_at IS NULL AND s.removed_at IS NULL AND rep.id = %s
+            """),
+            (report_id,)
+        )
+        result_rows = self.cursor.fetchall()
+        if (len(result_rows) != 1):
+            return None
+        return (result_rows[0][0], result_rows[0][1], result_rows[0][2], result_rows[0][3], result_rows[0][4])
+    
+    def display_report_review_screen_and_get_product_id(self, report_id: int) -> int:
+        product_id: int
+        product_name: str
+        seller_name: str
+        report_reason: str
+        product_id, product_name, seller_name, seller_id, report_reason = self.get_info_for_report_review_screen(report_id=report_id)
+        print(tabulate([[product_id, product_name, textwrap.fill(seller_name, width=len('Merchant Name')), seller_id, textwrap.fill(report_reason, width=20)]], headers=['Product ID', 'Product Name', 'Merchant Name', 'Merchant\nID', 'Report Reason'], tablefmt='fancy_grid'))
+        return product_id
+
     def handle_report_review_screen(self):
-        pass
+        user_response: str = ""
+        report_id: int | None = None
+        while (user_response == ""):
+            user_response = input("Enter the ID of a report to review, or 'x' to return to the main menu: ")
+            match user_response:
+                case 'x':
+                    return
+                case _:
+                    pass
+            try:
+                report_id = int(user_response)
+                if (report_id < 1):
+                    user_response = ""
+                    print("Invalid response.")
+            except ValueError:
+                user_response = ""
+                print("Invalid response.")
+                continue
+        
+        # Displaying report review screen and controls
+        product_id = self.display_report_review_screen_and_get_product_id(report_id=report_id)
+        controls_table_headers: list[str] = ['Remove Product', 'Ignore']
+        controls_table_entries: list[list[str]] = [['o', 'i']]
+        print(tabulate(controls_table_entries, headers=controls_table_headers, tablefmt='simple'))
+
+        # Getting user input
+        user_response = ""
+        while (user_response == ""):
+            user_response = input()
+            match user_response:
+                case 'o' | 'O':
+                    # Remove Product
+                    self.remove_product(product_id=product_id)
+                case 'i' | 'I':
+                    # Ignore report
+                    pass
+                case _:
+                    print("Invalid response")
+                    user_response = ""
+        self.mark_report_as_reviewed(report_id=report_id)
+
 
     def get_user_choice_in_response_to_display_of_unreviewed_reports(self) -> Callable | None:
         """
@@ -307,9 +388,8 @@ class ModeratorView:
                         # Review Reports
                         self.display_unreviewed_reports_for_unreviewed_products()
                         next_function: Callable | None = self.get_user_choice_in_response_to_display_of_unreviewed_reports()
-                        if (next_function == None):
-                            continue
-                        next_function()
+                        if (next_function != None):
+                            next_function()
                     case 'a':
                         # Remove product
                         product_id = self.get_product_removal_input()
