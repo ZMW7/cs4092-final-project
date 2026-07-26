@@ -72,3 +72,10 @@ class PurchaseHistoryEntry(NamedTuple):
     purchase: PurchaseEntry
     deliveries: dict[int, tuple[DeliveryEntry, str]]
     sales: dict[int, tuple[ProductSalesEntry, str]]
+
+class ModeratorInfo(NamedTuple):
+    id: int
+    created_at: datetime
+    first_name: str
+    last_name: str
+    email_address: str
