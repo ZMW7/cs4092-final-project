@@ -47,6 +47,7 @@ def authenticateCustomer():
                         customer_view.begin_interaction()
                     except KeyboardInterrupt:
                         customer_view.remove_all_items_from_cart()
+                        print("See ya! 👋")
                         conn.close()
                         cur.close()
                         sys.exit(0)
