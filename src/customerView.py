@@ -358,7 +358,7 @@ class CustomerView:
 
     def prompt_user_to_select_payment_method(self) -> PaymentMethodEntry:
         # Checking to see if user has a primary address
-        primary_address = None
+        billing_address = None
         self.cur.execute("""
             SELECT a.*
             FROM addresses as a
@@ -367,7 +367,7 @@ class CustomerView:
         (self._customer_id,))
         result_rows = self.cur.fetchall()
         if (len(result_rows) == 1):
-            primary_address = AddressEntry(
+            billing_address = AddressEntry(
                 id=result_rows[0][0],
                 country=result_rows[0][1],
                 administrative_division=result_rows[0][2],
@@ -378,8 +378,8 @@ class CustomerView:
                 customer_id=result_rows[0][7]
             )
         elif (len(result_rows) == 0):
-            print("No address found.")
-            return
+            print("No address found. Please enter information for a billing address")
+            self.prompt_user_to_select_address()
         else:
             print(f"There are {len(result_rows)} result rows??")
             return
@@ -417,7 +417,7 @@ class CustomerView:
         new_payment_method_selection_number = len(selection_table_entries)
         payment_method = None
         if (new_payment_method_selection_number == user_selection):
-            payment_method = self.display_new_payment_method_input_options_and_add_payment_method(primary_address)
+            payment_method = self.display_new_payment_method_input_options_and_add_payment_method(billing_address)
         else:
             payment_method = PaymentMethodEntry(
                 id=payment_method_rows[user_selection - 1][0],
