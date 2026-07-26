@@ -58,8 +58,8 @@ def create_customer_account():
                     if (len(result_rows) != 1):
                         print("Something went wrong.")
                         continue
-                    customer_id = result_rows[0][0]
                     customer_view = CustomerView(email_address, conn, cur)
+                    account_successfully_created = True
                     try:
                         customer_view.begin_interaction()
                     except KeyboardInterrupt:
