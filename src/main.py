@@ -1,4 +1,5 @@
 from customerView import CustomerView
+from sellerView import SellerView
 import psycopg
 import bcrypt
 import sys
@@ -117,6 +118,45 @@ def authenticateCustomer():
         print("Invalid credentials, please try again")
     authenticateCustomer()
 
+def merchant_username_and_password_are_valid(conn: psycopg.connection, cur: psycopg.cursor, username: str, password: str) -> bool:
+    password_hash = hashPassword(password)
+    try:
+        cur.execute("SELECT seller_name, password_hash FROM sellers")
+        rows = cur.fetchall()
+        for row in rows:
+            stored_hash = row[1]
+            if isinstance(stored_hash, str):
+                stored_hash = stored_hash.encode("utf-8")
+
+            is_valid_password = bcrypt.checkpw(password.encode("utf-8"), stored_hash)
+            if username == row[0] and is_valid_password:
+                return True
+    except:
+        return False
+    return False
+
+def authenticateSeller():
+    print("== Merchant Login ==")
+    print("Enter x to return to previous menu.")
+    is_logged_in = False
+    with psycopg.connect(**DB_PARAMS) as conn:
+        with conn.cursor() as cur:
+            while not (is_logged_in):
+                merchant_name = input("Company name: ")
+                match merchant_name:
+                    case 'x':
+                        print("Returning to welcome page.")
+                        cur.close()
+                        conn.close()
+                        getUserType()
+                password = input("Password: ")
+                is_logged_in = merchant_username_and_password_are_valid(conn, cur, merchant_name, password)
+            print(f"Successfully logged in as {merchant_name}")
+            seller_view = SellerView(conn, cur, merchant_name)
+            seller_view.beginInteraction()
+        
+
+
 def getUserType():
     print("Welcome to the marketplace! Signing in as customer (y/n)")
     answer = input()
@@ -126,7 +166,7 @@ def getUserType():
             nextAnswer = input()
             match nextAnswer:
                 case 's':
-                    pass
+                    authenticateSeller()
                 case 'm':
                     pass
                 case _:
