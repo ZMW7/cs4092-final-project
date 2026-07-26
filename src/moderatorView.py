@@ -61,15 +61,39 @@ class ModeratorView:
                 """),
                 (merchant_id,)
             )
+            self.cursor.fetchall()
         except:
             return False
         # Deleting all products
         self.cursor.execute(
             sql.SQL("""
                 DELETE FROM products WHERE seller_id = %s
+                RETURNING id
             """),
             (merchant_id,)
         )
+        deleted_products = self.cursor.fetchall()
+
+        # Inserting into 'seller_removals' table
+        self.cursor.execute(
+            sql.SQL("""
+                INSERT INTO seller_removals (removed_by, seller_id) VALUES
+                (%s, %s)
+            """),
+            (self._moderator_info.id, merchant_id,)
+        )
+        self.cursor.fetchall()
+
+        #  Inserting into 'product_removals' table
+        product_removals_insertions: list[tuple[int, int]] = [ (self._moderator_info.id, deleted_product) for deleted_product in deleted_products ]
+        self.cursor.executemany(
+            sql.SQL("""
+                INSERT INTO product_removals (removed_by, seller_id) VALUES
+                (%s, %s)
+            """),
+            product_removals_insertions
+        )
+        self.cursor.fetchall()
         self.connection.commit()
         return True
 
@@ -91,12 +115,21 @@ class ModeratorView:
             self.cursor.execute(
                 sql.SQL("""
                     DELETE FROM sellers WHERE id = %s
+                    RETURNING id
                 """),
                 (product_id,)
             )
-            self.connection.commit()
         except:
             return False
+        removed_product_id = self.cursor.fetchall()[0][0]
+        self.cursor.execute(
+            sql.SQL("""
+                INSERT INTO seller_removals (removed_by, seller_id) VALUES
+                (%s, %s)
+            """),
+            (self._moderator_info.id, removed_product_id)
+        )
+        self.connection.commit()
         return True
 
     def get_number_of_product_removals_for_merchant(self, seller_id: int):
