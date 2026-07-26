@@ -7,7 +7,7 @@ CREATE TABLE customers (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     primary_address_id INTEGER,
     preferred_payment_id INTEGER,
-    email_address VARCHAR(255) NOT NULL UNIQUE,
+    email_address VARCHAR(320) NOT NULL UNIQUE,
     password_hash CHAR(60) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
