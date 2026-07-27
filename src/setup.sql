@@ -305,18 +305,18 @@ VALUES              (   'Small toothpaste tube',        1500,   1,          9.99
                     (   'Some 1000 dollar product',     12,     1,          1000.00),
                     (   'Cool Guitar 1',                2,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Cool Guitars LLC'),           500.00);
 
-INSERT INTO products (  product_name,                   stock,  seller_id,  price) 
-VALUES              (   'Illegal Product',              12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         24),
-                    (   'Counterfeit Currency ($1000)', 100,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         20.00),
-                    (   'Illicit Substance',            15,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         200),
-                    (   '''Miracle'' Drug 1',           500,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          25.00),
-                    (   '''Miracle'' Drug 2',           12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          29.95),
-                    (   'Paper Towels (2 count)',       932,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    4.95),
-                    (   'Paper Towels (4 count)',       12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    9.65),
-                    (   'Paper Towels (6 count)',       719,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    15.55),
-                    (   'Paper Towels (8 count)',       382,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    18.95),
-                    (   'Paper Towels (24 count)',      95,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    45.00),
-                    (   'Washcloths (16 count)',        8,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Cloth Towel Company'),    5.00);
+INSERT INTO products (  product_name,                               stock,  seller_id,  price) 
+VALUES              (   'Illegal Product',                          12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         24),
+                    (   'Counterfeit Currency ($1000)',             100,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         20.00),
+                    (   'Terms of Service Violating Product',       15,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         200),
+                    (   '''Miracle'' Medicine 1',                   500,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          25.00),
+                    (   '''Miracle'' Medicine 2',                   12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          29.95),
+                    (   'Paper Towels (2 count)',                   932,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    4.95),
+                    (   'Paper Towels (4 count)',                   12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    9.65),
+                    (   'Paper Towels (6 count)',                   719,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    15.55),
+                    (   'Paper Towels (8 count)',                   382,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    18.95),
+                    (   'Paper Towels (24 count)',                  95,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    45.00),
+                    (   'Washcloths (16 count)',                    8,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Cloth Towel Company'),    5.00);
 
 
 
