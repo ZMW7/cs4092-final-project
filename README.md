@@ -15,3 +15,5 @@ To run the program, run:
 ```
 make run
 ```
+
+All company passwords in the sample data match the names of the companies, and all moderator passwords are 'mod'.
