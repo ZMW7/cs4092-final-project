@@ -4,7 +4,7 @@ VENV_PY  := $(VENV_DIR)/bin/python
 VENV_PIP := $(VENV_DIR)/bin/pip
 STAMP    := $(VENV_DIR)/.installed
 
-.PHONY: all setup clean
+.PHONY: all setup clean run
 
 all: setup
 
@@ -19,6 +19,10 @@ $(STAMP): requirements.txt $(VENV_DIR)/bin/activate
 	touch $(STAMP)
 
 setup: $(STAMP)
+	./setup.sh
+
+run:
+	$(PYTHON) src/main.py
 
 clean:
 	rm -rf $(VENV_DIR)
