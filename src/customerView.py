@@ -109,22 +109,67 @@ class CustomerView:
         if (len(line2) == 0):
             line2 = None
 
-        # Adding new address to database
+        # Checking to see if address already exists in the database
         self.cur.execute(
-            """
-                INSERT INTO addresses (country, administrative_division, city, line1, line2, postal_code, customer_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                RETURNING id
-            """,
-            (country, administrative_division, city, line1, line2, postal_code, self._customer_id)
+            sql.SQL("""
+                SELECT id
+                FROM addresses
+                WHERE country = %s AND administrative_division = %s AND city = %s AND line1 = %s AND line2 = %s AND postal_code = %s
+            """),
+            (country, administrative_division, city, line1, line2, postal_code)
         )
-        self.conn.commit()
+        result_rows = self.cur.fetchall()
+        address_id: int | None = None
+        if (len(result_rows) < 1):
+            # The address is not in the database, and must be added
+            self.cur.execute(
+                sql.SQL("""
+                    INSERT INTO addresses (country, administrative_division, city, line1, line2, postal_code)
+                    VALUES (%(country)s, %(administrative_division)s, %(city)s, %(line1)s, %(line2)s, %(postal_code)s)
+                    RETURNING id
+                """),
+                {
+                    "country": country, 
+                    "administrative_division": administrative_division,
+                    "city": city,
+                    "line1": line1,
+                    "line2": line2,
+                    "postal_code": postal_code
+                }
+            )
+            address_id = self.cur.fetchall()[0][0]
+            self.conn.commit()
+        else:
+            address_id = result_rows[0][0]
+
+        # Adding new customer-address relationship to the database
+        self.cur.execute(
+            sql.SQL("""
+                INSERT INTO customer_addresses (customer_id, address_id) VALUES
+                (%(customer_id)s, %(address_id)s)
+            """),
+            {
+                "customer_id": self._customer_id,
+                "address_id": address_id
+            }
+        )
+
+        # # Adding new address to database
+        # self.cur.execute(
+        #     """
+        #         INSERT INTO addresses (country, administrative_division, city, line1, line2, postal_code, customer_id)
+        #         VALUES (%s, %s, %s, %s, %s, %s, %s)
+        #         RETURNING id
+        #     """,
+        #     (country, administrative_division, city, line1, line2, postal_code, self._customer_id)
+        # )
+        # self.conn.commit()
 
         # Getting the address ID of the new address
-        rows = self.cur.fetchall()
-        if (len(rows) != 1):
-            raise ValueError(f"Expected 1 row, got {len(rows)}")
-        address_id = rows[0][0]
+        # rows = self.cur.fetchall()
+        # if (len(rows) != 1):
+        #     raise ValueError(f"Expected 1 row, got {len(rows)}")
+        # address_id = rows[0][0]
 
         user_response = input(f"Would you like to make {line1} your preferred address? (y/n, blank is y): ")
         match user_response:
@@ -149,18 +194,18 @@ class CustomerView:
             line1=line1,
             line2=line2,
             postal_code=postal_code,
-            customer_id=self._customer_id
         )
 
     def prompt_user_to_select_address(self) -> AddressEntry:
         print("\nRetreiving addresses...", end='\r', flush=True)
         # Retreiving payment methods
         self.cur.execute(
-            "SELECT * FROM addresses WHERE customer_id = %s",
+            "SELECT a.* FROM addresses AS a INNER JOIN customer_addresses AS ca ON ca.address_id = a.id WHERE ca.customer_id = %s",
             (self._customer_id,)
         )
         print("Addresses              ")
         address_rows = self.cur.fetchall()
+        print(f"There are {len(address_rows)} addresses")
         address_options = list()
         address = None
         if (len(address_rows) > 0):
@@ -193,8 +238,7 @@ class CustomerView:
                 city=address_rows[selection_number-1][3],
                 line1=address_rows[selection_number-1][4],
                 line2=address_rows[selection_number-1][5],
-                postal_code=address_rows[selection_number-1][6],
-                customer_id=address_rows[selection_number-1][7]
+                postal_code=address_rows[selection_number-1][6]
             )
         return address
 
@@ -300,7 +344,7 @@ class CustomerView:
         self.cur.execute("""
             SELECT a.*
             FROM addresses as a
-            INNER JOIN customers as c ON c.primary_address_id = a.id AND c.id = %s
+            INNER JOIN customers AS c ON c.primary_address_id = a.id AND c.id = %s
         """,
         (self._customer_id,))
         result_rows = self.cur.fetchall()
@@ -313,7 +357,6 @@ class CustomerView:
                 line1=result_rows[0][4],
                 line2=result_rows[0][5],
                 postal_code=result_rows[0][6],
-                customer_id=result_rows[0][7]
             )
         elif (len(result_rows) == 0):
             print("No address found. Please enter information for a billing address")
@@ -382,7 +425,7 @@ class CustomerView:
             print("No primary address found")
             return None
         
-        address_id, country, administrative_division, city, line1, line2, postal_code, _ = result_rows[0]
+        address_id, country, administrative_division, city, line1, line2, postal_code = result_rows[0]
         return AddressEntry(
             id=address_id,
             country=country,
@@ -391,7 +434,6 @@ class CustomerView:
             line1=line1,
             line2=line2,
             postal_code=postal_code,
-            customer_id=self._customer_id
         )
 
     def create_delivery_for_purchase(self, purchase: PurchaseEntry, address: AddressEntry) -> DeliveryEntry:
@@ -636,7 +678,6 @@ class CustomerView:
                 line1=line1,
                 line2=line2,
                 postal_code=postal_code,
-                customer_id=self._customer_id
             )
 
             user_response = input(f"Would you like to use payment method {self._censor_card_number_str(card_number)}? (y/n, blank is y)")
