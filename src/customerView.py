@@ -924,7 +924,7 @@ class CustomerView:
             selected_report_option_num: int | None = None
             print(tabulate(report_options_entries, headers=report_options_headers, tablefmt='rounded_grid'))
             while (report_reason == None):
-                user_response = input("Please select a report option.")
+                user_response = input("Please select a report option. ")
                 try:
                     selected_report_option_num = int(user_response)
                     if not (0 < selected_report_option_num <= num_of_report_options):
