@@ -252,6 +252,7 @@ class CustomerView:
             except ValueError:
                 print("Invalid card code. Card code must be three or four digits.", end=" ")
                 card_code = None
+                continue
             if not (len(card_code) == 3 or len(card_code) == 4):
                 card_code = None
 
