@@ -5,7 +5,7 @@ CREATE DATABASE company_db;
 
 CREATE TABLE customers (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    primary_address_id INTEGER UNIQUE,
+    primary_address_id INTEGER,
     preferred_payment_id INTEGER,
     email_address VARCHAR(320) NOT NULL UNIQUE,
     password_hash CHAR(60) NOT NULL,
@@ -19,8 +19,7 @@ CREATE TABLE addresses (
     city VARCHAR(127) NOT NULL,
     line1 VARCHAR(127) NOT NULL,
     line2 VARCHAR(127),
-    postal_code VARCHAR(10) NOT NULL,
-    customer_id INTEGER
+    postal_code VARCHAR(10) NOT NULL
 );
 
 CREATE TABLE customer_addresses (
@@ -134,10 +133,14 @@ ADD CONSTRAINT fk_preferred_payment_id
     FOREIGN KEY (preferred_payment_id)
     REFERENCES payment_methods(id);
 
-ALTER TABLE addresses
+ALTER TABLE customer_addresses
 ADD CONSTRAINT fk_customer
-    FOREIGN KEY (customer_id) 
+    FOREIGN KEY (customer_id)
     REFERENCES customers (id);
+ALTER TABLE customer_addresses
+ADD CONSTRAINT fk_address
+    FOREIGN KEY (address_id)
+    REFERENCES addresses (id);
 
 ALTER TABLE payment_methods
 ADD CONSTRAINT fk_address
