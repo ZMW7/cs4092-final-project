@@ -201,7 +201,10 @@ class ModeratorView:
         )
         result_rows = self.cursor.fetchall()
         removal_history_table_headers: list[str] = ["Product ID", "Merchant ID", "Removal Date"]
-        print(tabulate(result_rows, headers=removal_history_table_headers, tablefmt='fancy_grid'))
+        removal_history_table_entries: list[list[str]] = [ [
+            result_row[0], result_row[1], result_row[2].strftime("%Y-%m-%d %H:%M:%S")
+        ] for result_row in result_rows ]
+        print(tabulate(removal_history_table_entries, headers=removal_history_table_headers, tablefmt='fancy_grid'))
 
     def display_merchant_removal_history(self):
         # Defining and executing the query
@@ -215,7 +218,10 @@ class ModeratorView:
         )
         result_rows = self.cursor.fetchall()
         removal_history_table_headers: list[str] = ["Merchant ID", "Removal Date"]
-        print(tabulate(result_rows, headers=removal_history_table_headers, tablefmt='fancy_grid'))
+        removal_history_table_entries: list[list[str]] = [ [
+            result_row[0], result_row[1].strftime("%Y-%m-%d %H:%M:%S")
+        ] for result_row in result_rows ]
+        print(tabulate(removal_history_table_entries, headers=removal_history_table_headers, tablefmt='fancy_grid'))
 
     def get_product_removal_input(self) -> int:
         """
