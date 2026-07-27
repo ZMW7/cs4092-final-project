@@ -65,13 +65,13 @@ class CustomerView:
 
     def remove_all_items_from_cart(self):
         print("\nRemoving all items from cart...")
-        query = ""
-        items_list = list(self._cart.items())
+        items_list = [(quantity, product_id) for product_id, quantity in self._cart.items()]
         self.cur.executemany(
             "UPDATE products SET stock = stock + %s WHERE id = %s",
             items_list
         )
         self.conn.commit()
+        self._cart.clear()
 
     def display_new_address_input_options_and_add_to_database(self) -> AddressEntry:
         print("\nNew Address")
