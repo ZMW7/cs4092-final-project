@@ -6,6 +6,7 @@ import enum
 class ReportReason(enum.StrEnum):
     FALSE_ADVERTISING = "false advertising",
     INNAPROPRIATE_CONTENT = "innapropriate content",
+    ILLEGAL_PRODUCT = "illegal product"
     CUSTOM = "custom"
 
 class AddressEntry(NamedTuple):
