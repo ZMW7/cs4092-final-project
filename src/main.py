@@ -113,8 +113,6 @@ def authenticateCustomer():
                         sys.exit(0)
                     login_success = True
                     return
-            conn.close()
-        cur.close()
     if (not login_success):
         print("Invalid credentials, please try again")
     authenticateCustomer()
