@@ -12,7 +12,6 @@ class SellerView:
         self.connection: psycopg.connection.Connection = conn
         self.cursor: psycopg.cursor.Cursor = cur
 
-        print(f'Seller name is {username}')
         # Getting seller ID
         self.cursor.execute(
             sql.SQL("""
@@ -405,6 +404,14 @@ class SellerView:
     def get_main_menu_user_input(self):
         print(f"Merchant View ---------- {self._seller_name}")
         should_continue: bool = True
+
+        # If the seller has been removed, notify the user and return
+        if (self._seller_has_been_removed()):
+            # print("\nYour account has been terminated for violating the marketplace's Terms of Service.\n")
+            termination_notice_display_table = [["Your account has been removed for violating the marketplace's Terms of Service."]]
+            print(tabulate(termination_notice_display_table, tablefmt='rounded_grid'))
+            return
+
         while (should_continue):
             controls_table_headers: list[str] = ["View Products", "Add Product", "Adjust Prices", "Adjust Stock", "See Data", "Sign Out"]
             controls_table_entries: list[list[str]] = [['v', 'a', 't', 's', 'd', 'x']]
@@ -437,6 +444,20 @@ class SellerView:
 
     def beginInteraction(self):
         self.get_main_menu_user_input()
+
+
+    def _seller_has_been_removed(self) -> bool:
+        # Defining and executing the query
+        self.cursor.execute(
+            sql.SQL("""
+                SELECT removed_at
+                FROM sellers
+                WHERE id = %s AND removed_at IS NOT NULL
+            """),
+            (self._seller_id,)
+        )
+        return (len(self.cursor.fetchall()) > 0)
+        
 
 
     def _product_name_is_valid(self, product_name: str) -> bool:
