@@ -810,7 +810,7 @@ class CustomerView:
                 INNER JOIN addresses as a ON d.address_id = a.id
                 ORDER BY d.id
             """)
-            self.cur.execute(purchase_history_query, (self._customer_id, offset,))
+            self.cur.execute(purchase_history_query, (self._customer_id,))
 
             # Filling the local purchase history
             result_rows = self.cur.fetchall()
