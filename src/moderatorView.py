@@ -168,6 +168,21 @@ class ModeratorView:
         )
         return self.cursor.fetchall()[0][0]
 
+    def get_merchant_id_from_name(self, merchant_name: str) -> tuple[id]:
+        self.cursor.execute(
+            sql.SQL("""
+                SELECT seller_name
+                FROM sellers
+                WHERE id = %s
+            """),
+            (merchant_name,)
+        )
+        result_rows = self.cursor.fetchall()
+        if (len(result_rows) < 1):
+            return (None,)
+        else:
+            return tuple([result_row[0] for result_row in result_rows])
+
     def display_previously_reviewed_reports(self):
         pass
 
@@ -223,6 +238,26 @@ class ModeratorView:
         ] for result_row in result_rows ]
         print(tabulate(removal_history_table_entries, headers=removal_history_table_headers, tablefmt='fancy_grid'))
 
+    def display_merchant_search_results(self, merchant_name: str):
+        self.cursor.execute(
+            sql.SQL("""
+                SELECT s.seller_name, s.id, COUNT(DISTINCT prod.id), COUNT(prod.removed_at)
+                FROM sellers AS s
+                INNER JOIN products AS prod
+                    ON prod.seller_id = s.id
+                WHERE s.seller_name ILIKE %(search_term)s
+                GROUP BY s.id
+            """),
+            {"search_term": f"%{merchant_name}%"}
+        )
+        result_rows = self.cursor.fetchall()
+
+        # Displaying the table
+        search_result_table_headers: list[str] = ['Merchant\nName', 'Merchant\nID', 'Number of\nProducts\n(All time)', 'Number of\nRemoved Products']
+        search_result_table_entries: list[list[str]] = [ [textwrap.fill(result_row[0], width=15), result_row[1], result_row[2], result_row[3]] for result_row in result_rows ]
+        print(tabulate(search_result_table_entries, headers=search_result_table_headers, tablefmt='fancy_grid'))
+
+
     def get_product_removal_input(self) -> int:
         """
         Prompts the user to enter the product ID of a product to remove.
@@ -244,25 +279,55 @@ class ModeratorView:
                 print("Invalid product ID. Please try again.")
         return product_id
 
-    def get_merchant_removal_input(self) -> int:
+    def get_merchant_search_input(self) -> str:
         """
-        Prompts the user to enter the ID of a merchant to remove.
+        Prompts the user to enter the name of a merchant to search for.
 
         Returns
-        ------
+        -------
+            str
+                The merchant name to search for
+        """
+        user_response: str = ""
+        while (user_response == ""):
+            user_response = input("Merchant Search: ")
+        return user_response
+
+    def get_merchant_removal_input(self) -> int | None:
+        """
+        Prompts the user to input whether they would like to search for
+        a merchant by name. Once search has been completed or skipped,
+        prompts the user to enter the ID of a merchant to remove.
+
+        Returns
+        -------
             int
                 The ID of the merchant to be removed
         """
         print("\n== Merchant Removal ==")
         user_response: str = ""
         merchant_id: int | None = None
+
+        # Getting whether or not the user would like to search for the merchant by name
+        while (user_response == ""):
+            user_response = input("Would you like to search for a merchant ID by name? (y to search, any other input to skip search): ")
+            match user_response:
+                case 'y' | 'Y':
+                    user_response = self.get_merchant_search_input()
+                    self.display_merchant_search_results(user_response)
+                case _:
+                    break
+
+        # Getting the user input for removing the merchant
+        user_response = ""
         while (user_response == ""):
             user_response = input("Merchant ID: ")
             try:
                 merchant_id = int(user_response)
             except ValueError:
-                user_response = ""
-                print("Invalid merchant ID. Please try again.")
+                # user_response = ""
+                print("Invalid merchant ID.")
+                return None
         return merchant_id
 
     def get_info_for_report_review_screen(self, report_id: int) -> tuple[int, str, str, str] | None:
@@ -406,6 +471,8 @@ class ModeratorView:
                     case 's':
                         # Remove seller
                         merchant_id = self.get_merchant_removal_input()
+                        if (merchant_id == None):
+                            continue
                         if (self.remove_merchant(merchant_id)):
                             print("Merchant successfully removed")
                         else:
