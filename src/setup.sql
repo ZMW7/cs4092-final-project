@@ -282,14 +282,15 @@ UPDATE customers SET primary_address_id = 7, preferred_payment_id = 7 WHERE id =
 INSERT INTO sellers (seller_name, password_hash)
 VALUES              ('Toothpaste Brand',            '$2a$12$wXWPWI6onYTemLKlROa5Oecehziu9UOeCymdgWSianhoI8aHrZ5t6'), -- Password: Toothpaste Brand
                     ('Vita GoGo',                   '$2a$12$tfmOelf6Lz8dKFtnNNOHb.ogMSe4/hhMxjc.pqI0rDzxjCVyrXeWK'), -- Password: Vita GoGo
-                    ('Full Priced Books',           '$2a$12$zDaZxgrIcjjTHarkJ8xfOunaLOscIdYU4Glj104Dhj83rUcOF/U5O'), -- Password: Full Priced Books
+                    ('Friendly Bookstore',          '$2a$12$wWxkcDE2U/.KAp4q7SqBi.8T5snFJdSGyRIHjLmB/wEOH0XEEDzn6'), -- Password: Friendly Bookstore
                     ('Illegal Products LLC',        '$2a$12$wyIOmKNqtGWpmUe9I0sCzuSqWGymjDdhvswKw7W2fjuqdsfcEAVSu'), -- Password: Illegal Products LLC
                     ('False Advertising LLC',       '$2a$12$jES7/Ep15QxecJZpyjlKteHfBcifUc.XJ4e8eljRkGK7X9N3cw056'), -- Password: False Advertising LLC
                     ('Cool Guitars LLC',            '$2a$12$lSmhhR3c/B0oSbGTGNd1G.SXmtq50HfQVKSOaAXySHMlRwPx1myTW'), -- Password: Cool Guitars LLC
                     ('The Shady Merchant',          '$2a$12$5TM5kF57YnuhTypDb7jpt.GeBEpaImyG3SLR/mSGwYTCdiIUPIhRu'), -- Password: The Shady Merchant
                     ('Troublemakers Inc.',          '$2a$12$toPB4QCpSEacLn5wWK6YqOmRNRNJOMuKLEwuS8keB9C1pNwyz13JW'), -- Password: Troublemakers Inc.
                     ('The Paper Towel Company',     '$2a$12$XNJQQRh1UibTUO0FpS0xzuhT8gg7GFzjeNzrbPqytsoiLMSVGyGaG'), -- Password: The Paper Towel Company
-                    ('The Cloth Towel Company',     '$2a$12$QtHKFozlrMyvV2SLmU62sumXCy9OfPnR/yJ7bQkvyT2nWxDl4vtnS'); -- Password: The Cloth Towel Company
+                    ('The Cloth Towel Company',     '$2a$12$QtHKFozlrMyvV2SLmU62sumXCy9OfPnR/yJ7bQkvyT2nWxDl4vtnS'), -- Password: The Cloth Towel Company
+                    ('The Lamp Company',            '$2a$12$Gcf8DF8GRPVMSDSKR7o2Qeh.qzIooCqnTAAURaAA5mHBBm1qlpAt6'); -- Password: The Lamp Company
 
 -- Products
 INSERT INTO products (  product_name,                   stock,  seller_id,  price) 
@@ -305,25 +306,26 @@ VALUES              (   'Small toothpaste tube',        1500,   1,          9.99
                     (   'Some 1000 dollar product',     12,     1,          1000.00),
                     (   'Cool Guitar 1',                2,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Cool Guitars LLC'),           500.00);
 
-INSERT INTO products (  product_name,                   stock,  seller_id,  price) 
-VALUES              (   'Illegal Product',              12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         24),
-                    (   'Counterfeit Currency ($1000)', 100,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         20.00),
-                    (   'Illicit Substance',            15,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         200),
-                    (   '''Miracle'' Drug 1',           500,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          25.00),
-                    (   '''Miracle'' Drug 2',           12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          29.95),
-                    (   'Paper Towels (2 count)',       932,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    4.95),
-                    (   'Paper Towels (4 count)',       12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    9.65),
-                    (   'Paper Towels (6 count)',       719,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    15.55),
-                    (   'Paper Towels (8 count)',       382,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    18.95),
-                    (   'Paper Towels (24 count)',      95,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    45.00),
-                    (   'Washcloths (16 count)',        8,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Cloth Towel Company'),    5.00);
+INSERT INTO products (  product_name,                               stock,  seller_id,  price) 
+VALUES              (   'Illegal Product',                          12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         24),
+                    (   'Counterfeit Currency ($1000)',             100,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         20.00),
+                    (   'Terms of Service Violating Product',       15,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         200),
+                    (   '''Miracle'' Medicine 1',                   500,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          25.00),
+                    (   '''Miracle'' Medicine 2',                   12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          29.95),
+                    (   'Paper Towels (2 count)',                   932,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    4.95),
+                    (   'Paper Towels (4 count)',                   12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    9.65),
+                    (   'Paper Towels (6 count)',                   719,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    15.55),
+                    (   'Paper Towels (8 count)',                   382,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    18.95),
+                    (   'Paper Towels (24 count)',                  95,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    45.00),
+                    (   'Washcloths (16 count)',                    8,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Cloth Towel Company'),    5.00),
+                    (   'Crime and Punishment',                     20,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Friendly Bookstore'),          12.00);
 
 
 
 -- Moderators
 INSERT INTO moderators (first_name, last_name,      email_address,                  password_hash) VALUES
                        ('Jim',      'Bob',          'jim.bob@jimbob.com',           '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'), -- Password: 'mod'
-                       ('Adams',    'Auditor',      'adams.audit@gmail.com',        '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'), -- Password: 'mod'
+                       ('Jason',    'N',            'Jason.N@example.com',          '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'), -- Password: 'mod'
                        ('Zachary',  'W',            'Zachary.W@example.com',        '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'); -- Password: 'mod'
 
 -- Ratings
