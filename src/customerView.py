@@ -9,7 +9,7 @@ import textwrap
 import readline # for up arrow support on linux / mac
 import enum
 
-from commonTypes import AddressEntry, PaymentMethodEntry, PurchaseEntry, ProductSalesEntry, DeliveryEntry, RatingEntry, ReportEntry, PurchaseHistoryEntry
+from commonTypes import AddressEntry, PaymentMethodEntry, PurchaseEntry, ProductSalesEntry, DeliveryEntry, RatingEntry, ReportReason, ReportEntry, PurchaseHistoryEntry
 
 def strict_truncate_str(text: str, max_length: int = 15):
     if len(text) > max_length:
@@ -476,7 +476,7 @@ class CustomerView:
         total_cost = Decimal(0.00)
 
         product_names_query = """
-            SELECT id, product_name, price FROM products WHERE id IN (
+            SELECT id, product_name, price FROM products WHERE removed_at IS NULL AND id IN (
         """
         number_of_unique_items_in_cart = len(self._cart.keys())
         for index, key in enumerate(self._cart.keys()):
@@ -660,7 +660,7 @@ class CustomerView:
             product_id = (int)(input("Enter the product ID of the product to remove from your cart: "))
             quantity_str = input("quantity to remove (leave blank for all): ")
             quantity = 0
-            query = sql.SQL("SELECT product_name FROM products WHERE id = %s")
+            query = sql.SQL("SELECT product_name FROM products WHERE removed_at IS NULL AND id = %s")
             self.cur.execute(query, (product_id,))
 
             # If the product does not exist, notify the user and return to the previous page
@@ -715,7 +715,7 @@ class CustomerView:
             product_id = int(input("Enter the product ID of the product to add: "))
             quantity = int(input("quantity: "))
 
-            query = sql.SQL("SELECT product_name, stock, price FROM products WHERE id = %s")
+            query = sql.SQL("SELECT product_name, stock, price FROM products WHERE removed_at IS NULL AND id = %s")
             self.cur.execute(query, (product_id,))
 
             # If the product ID is invalid, notify user and return to previous page
@@ -762,7 +762,7 @@ class CustomerView:
             return
         
         product_names_query = """
-            SELECT id, product_name, price FROM products WHERE id IN (
+            SELECT id, product_name, price FROM products WHERE removed_at IS NULL AND id IN (
         """
         number_of_items_in_cart = len(self._cart.keys())
         for index, key in enumerate(self._cart.keys()):
@@ -946,11 +946,11 @@ class CustomerView:
         # Saving report in database
         self.cur.execute(
             sql.SQL("""
-                INSERT INTO reports (customer_id, reason) VALUES
-                (%s, %s)
+                INSERT INTO reports (customer_id, product_id, reason) VALUES
+                (%s, %s, %s)
                 RETURNING id, reviewed_by, created_at
             """),
-            (self._customer_id, report_reason,)
+            (self._customer_id, product_id, report_reason,)
         )
         self.conn.commit()
         result_rows = self.cur.fetchall()
@@ -1059,6 +1059,7 @@ class CustomerView:
                 FROM ratings as r
                 GROUP BY r.product_id
             ) as r ON r.product_id = p.id
+            WHERE p.removed_at IS NULL
             ;
         """
         self.cur.execute(query)

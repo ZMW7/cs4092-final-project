@@ -38,7 +38,8 @@ CREATE TABLE products (
     stock INTEGER NOT NULL,
     seller_id INTEGER NOT NULL,
     price NUMERIC(10, 2) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    removed_at TIMESTAMPTZ
 );
 
 CREATE TABLE ratings (
@@ -53,14 +54,15 @@ CREATE TABLE sellers (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     seller_name VARCHAR(63) NOT NULL UNIQUE,
     password_hash CHAR(60) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    removed_at TIMESTAMPTZ
 );
 
 CREATE TABLE moderators (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     first_name VARCHAR(20) NOT NULL,
-    last_name VARCHAR(30) NOT NULL,
+    last_name VARCHAR(30) NOT NULL UNIQUE,
     email_address VARCHAR(255) NOT NULL UNIQUE,
     password_hash CHAR(60) NOT NULL
 );
@@ -70,12 +72,14 @@ CREATE TABLE reports (
     customer_id INTEGER NOT NULL,
     reviewed_by INTEGER,
     reason VARCHAR(60) NOT NULL,
+    product_id INTEGER NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE product_removals (
     removed_by INTEGER NOT NULL,
     product_id INTEGER NOT NULL,
+    seller_id INTEGER NOT NULL,
     removed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (product_id, removed_at)
 );
@@ -276,12 +280,16 @@ UPDATE customers SET primary_address_id = 7, preferred_payment_id = 7 WHERE id =
 
 -- Sellers
 INSERT INTO sellers (seller_name, password_hash)
-VALUES              ('Crest',                   '$2a$12$hkQz1.MtMaHP4dl5zal2WOJE0oiQdv.O3RqAGBbDIk3yDvZoS1E.6'), -- Password: Crest
-                    ('Vita Coco',               '$2a$12$qxoFn5PvqTt1AjyafnxCVuU3x9V.97J/trfahmUP3vcTloAgi..lW'), -- Password: Vita Coco
-                    ('Half Priced Books',       '$2a$12$MSsl1XFuFtuVZ6fqSNkkxuyCG9i7gOrnad2caSA62Uwlm9hTk6mB6'), -- Password: Half Priced Books
-                    ('Illegal Products LLC',    '$2a$12$wyIOmKNqtGWpmUe9I0sCzuSqWGymjDdhvswKw7W2fjuqdsfcEAVSu'), -- Password: Illegal Products LLC
-                    ('False Advertising LLC',   '$2a$12$jES7/Ep15QxecJZpyjlKteHfBcifUc.XJ4e8eljRkGK7X9N3cw056'), -- Password: False Advertising LLC
-                    ('Cool Guitars LLC',        '$2a$12$lSmhhR3c/B0oSbGTGNd1G.SXmtq50HfQVKSOaAXySHMlRwPx1myTW'); -- Password: Cool Guitars LLC
+VALUES              ('Toothpaste Brand',            '$2a$12$wXWPWI6onYTemLKlROa5Oecehziu9UOeCymdgWSianhoI8aHrZ5t6'), -- Password: Toothpaste Brand
+                    ('Vita GoGo',                   '$2a$12$tfmOelf6Lz8dKFtnNNOHb.ogMSe4/hhMxjc.pqI0rDzxjCVyrXeWK'), -- Password: Vita GoGo
+                    ('Full Priced Books',           '$2a$12$zDaZxgrIcjjTHarkJ8xfOunaLOscIdYU4Glj104Dhj83rUcOF/U5O'), -- Password: Full Priced Books
+                    ('Illegal Products LLC',        '$2a$12$wyIOmKNqtGWpmUe9I0sCzuSqWGymjDdhvswKw7W2fjuqdsfcEAVSu'), -- Password: Illegal Products LLC
+                    ('False Advertising LLC',       '$2a$12$jES7/Ep15QxecJZpyjlKteHfBcifUc.XJ4e8eljRkGK7X9N3cw056'), -- Password: False Advertising LLC
+                    ('Cool Guitars LLC',            '$2a$12$lSmhhR3c/B0oSbGTGNd1G.SXmtq50HfQVKSOaAXySHMlRwPx1myTW'), -- Password: Cool Guitars LLC
+                    ('The Shady Merchant',          '$2a$12$5TM5kF57YnuhTypDb7jpt.GeBEpaImyG3SLR/mSGwYTCdiIUPIhRu'), -- Password: The Shady Merchant
+                    ('Troublemakers Inc.',          '$2a$12$toPB4QCpSEacLn5wWK6YqOmRNRNJOMuKLEwuS8keB9C1pNwyz13JW'), -- Password: Troublemakers Inc.
+                    ('The Paper Towel Company',     '$2a$12$XNJQQRh1UibTUO0FpS0xzuhT8gg7GFzjeNzrbPqytsoiLMSVGyGaG'), -- Password: The Paper Towel Company
+                    ('The Cloth Towel Company',     '$2a$12$QtHKFozlrMyvV2SLmU62sumXCy9OfPnR/yJ7bQkvyT2nWxDl4vtnS'); -- Password: The Cloth Towel Company
 
 -- Products
 INSERT INTO products (  product_name,                   stock,  seller_id,  price) 
@@ -295,14 +303,28 @@ VALUES              (   'Small toothpaste tube',        1500,   1,          9.99
                     (   'Some other illegal product',   22,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'),   5.00),
                     (   'Some 12 dollar product',       300,    3,          12.00),
                     (   'Some 1000 dollar product',     12,     1,          1000.00),
-                    (   'Cool Guitar 1',                2,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Cool Guitars LLC'),       500.00);
+                    (   'Cool Guitar 1',                2,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Cool Guitars LLC'),           500.00);
+
+INSERT INTO products (  product_name,                   stock,  seller_id,  price) 
+VALUES              (   'Illegal Product',              12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         24),
+                    (   'Counterfeit Currency ($1000)', 100,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         20.00),
+                    (   'Illicit Substance',            15,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Shady Merchant'),         200),
+                    (   '''Miracle'' Drug 1',           500,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          25.00),
+                    (   '''Miracle'' Drug 2',           12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Troublemakers Inc.'),          29.95),
+                    (   'Paper Towels (2 count)',       932,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    4.95),
+                    (   'Paper Towels (4 count)',       12,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    9.65),
+                    (   'Paper Towels (6 count)',       719,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    15.55),
+                    (   'Paper Towels (8 count)',       382,    (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    18.95),
+                    (   'Paper Towels (24 count)',      95,     (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Paper Towel Company'),    45.00),
+                    (   'Washcloths (16 count)',        8,      (SELECT DISTINCT id FROM sellers WHERE seller_name = 'The Cloth Towel Company'),    5.00);
+
 
 
 -- Moderators
 INSERT INTO moderators (first_name, last_name,      email_address,                  password_hash) VALUES
-                       ('Jim',      'Bob',          'jim.bob@jimbob.com',           '$2a$12$BDiZ4hcX7JSscaXz4PZCkO3f0fbK42K3.oRIGwljBCnL5IoyZX2..'),
-                       ('Adams',    'Auditor',      'adams.audit@gmail.com',        '$2a$12$HBCmkCli.zgE3.md7P7zpOWChjQKkHsrSEJKagZ1fFjVu.TVabLSe'),
-                       ('Zachary',  'W',            'Zachary.W@example.com',        '$2a$12$DiooaYFiMGFxG/NEnjNMD.dCk3qaePdVrLKA2U8k6uwfuEnaLANEK');
+                       ('Jim',      'Bob',          'jim.bob@jimbob.com',           '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'), -- Password: 'mod'
+                       ('Adams',    'Auditor',      'adams.audit@gmail.com',        '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'), -- Password: 'mod'
+                       ('Zachary',  'W',            'Zachary.W@example.com',        '$2a$12$Lb0IUrsBgV4MY3jxIT2oOuVIDNTZ2afJhEqBPe6wdQk.SrLNn7Qwu'); -- Password: 'mod'
 
 -- Ratings
 INSERT INTO ratings (   customer_id,    product_id, rating)
@@ -315,13 +337,18 @@ VALUES              (   1,              1,          9),
                     (   5,              6,          7);
 
 -- Product removals
-INSERT INTO product_removals (  removed_by, product_id)
-VALUES                       (  1,          7),
-                             (  2,          8);
+INSERT INTO product_removals (  removed_by, product_id, seller_id)
+VALUES                       (  1,          7,          (SELECT DISTINCT seller_id FROM products WHERE id = 7)),
+                             (  2,          8,          (SELECT DISTINCT seller_id FROM products WHERE id = 8));
+
+UPDATE products SET removed_at = (SELECT removed_at FROM product_removals WHERE product_id = 7) WHERE id = 7;
+UPDATE products SET removed_at = (SELECT removed_at FROM product_removals WHERE product_id = 8) WHERE id = 8;
 
 -- Seller removals
 INSERT INTO seller_removals (   removed_by, seller_id)
-VALUES                      (   3,          (SELECT DISTINCT id FROM sellers WHERE seller_name = 'Illegal Products LLC'));
+VALUES                      (   3,          (SELECT DISTINCT id FROM sellers WHERE seller_name = 'False Advertising LLC'));
+
+UPDATE sellers SET removed_at = (SELECT removed_at FROM seller_removals WHERE seller_id = (SELECT DISTINCT id FROM sellers WHERE seller_name = 'False Advertising LLC')) WHERE seller_name = 'False Advertising LLC';
 
 -- Purchases
 INSERT INTO purchases   (   customer_id,                                                    payment_method_id)
@@ -364,5 +391,5 @@ INSERT INTO deliveries  (   purchase_id,    address_id,     delivery_status,    
                         (   3,              8,              'delivered',        '2026-06-23',   '2026-06-23 17:00:00+00'    );
 
 -- Reports
-INSERT INTO reports     (   customer_id,    reviewed_by,    reason                      )   VALUES
-                        (   1,              1,              'false advertising'         );
+INSERT INTO reports     (   customer_id,    reviewed_by,    reason,                 product_id                                                                      )   VALUES
+                        (   1,              1,              'false advertising',    (SELECT DISTINCT id FROM products WHERE product_name = 'Some illegal product')  );

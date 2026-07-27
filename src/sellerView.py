@@ -34,7 +34,7 @@ class SellerView:
         # Defining and executing the query
         self.cursor.execute(
             sql.SQL("""
-                SELECT id, product_name, stock, price, created_at FROM products AS p WHERE p.seller_id = %s
+                SELECT id, product_name, stock, price, created_at FROM products AS p WHERE p.seller_id = %s AND p.removed_at IS NULL
             """),
             (self._seller_id,)
         )
