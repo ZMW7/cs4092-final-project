@@ -177,7 +177,7 @@ class CustomerView:
         new_address_selection_number = len(address_rows) + 1
         while not (0 < selection_number < len(address_rows) + 2):
             try:
-                selection_number = int(input("Please select an address: "))
+                selection_number = int(input("Please select an address (by number): "))
                 if not (0 < selection_number < len(address_rows) + 2):
                     print("Invalid selection.", end=" ")
             except ValueError:
@@ -252,6 +252,7 @@ class CustomerView:
             except ValueError:
                 print("Invalid card code. Card code must be three or four digits.", end=" ")
                 card_code = None
+                continue
             if not (len(card_code) == 3 or len(card_code) == 4):
                 card_code = None
 
@@ -345,7 +346,7 @@ class CustomerView:
         user_selection = -1
         while not (0 < user_selection <= len(selection_table_entries)):
             try:
-                user_selection = (int)(input("Please select a payment method: "))
+                user_selection = (int)(input("Please select a payment method (by number): "))
                 if not (0 < user_selection <= len(selection_table_entries)):
                     print(f"Invalid selection. Selection must be greater than 0 and less than {len(selection_table_entries) + 1}.")
             except ValueError:
@@ -918,13 +919,14 @@ class CustomerView:
             report_options_entries = [
                 (1, ReportReason.FALSE_ADVERTISING),
                 (2, ReportReason.INNAPROPRIATE_CONTENT),
-                (3, ReportReason.CUSTOM)
+                (3, ReportReason.ILLEGAL_PRODUCT),
+                (4, ReportReason.CUSTOM)
             ]
             num_of_report_options: int = len(report_options_entries)
             selected_report_option_num: int | None = None
             print(tabulate(report_options_entries, headers=report_options_headers, tablefmt='rounded_grid'))
             while (report_reason == None):
-                user_response = input("Please select a report option.")
+                user_response = input("Please select a report option (by number). ")
                 try:
                     selected_report_option_num = int(user_response)
                     if not (0 < selected_report_option_num <= num_of_report_options):

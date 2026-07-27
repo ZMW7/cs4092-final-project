@@ -51,7 +51,6 @@ def create_customer_account():
 
                 # Adding the user to the database
                 try:
-                    print(f"password_hash: {password_hash} ({len(password_hash.decode())} characters)")
                     cur.execute("INSERT INTO customers (email_address, password_hash) VALUES (%s, %s) RETURNING id", (email_address, password_hash.decode(),))
                     conn.commit()
                     result_rows = cur.fetchall()
@@ -193,7 +192,7 @@ def authenticateModerator():
 
 
 def getUserType():
-    print("Welcome to the marketplace! Signing in as customer (y/n)")
+    print("Welcome to the marketplace! Signing in as customer? (y/n)")
     answer = input()
     match answer:
         case 'n' | 'N':
