@@ -714,6 +714,9 @@ class CustomerView:
         try:
             product_id = int(input("Enter the product ID of the product to add: "))
             quantity = int(input("quantity: "))
+            if (quantity < 1):
+                print("Quantity cannot be less than 1")
+                return previous_page
 
             query = sql.SQL("SELECT product_name, stock, price FROM products WHERE removed_at IS NULL AND id = %s")
             self.cur.execute(query, (product_id,))
@@ -806,8 +809,6 @@ class CustomerView:
                 INNER JOIN products as prod ON s.product_id = prod.id
                 INNER JOIN addresses as a ON d.address_id = a.id
                 ORDER BY d.id
-                LIMIT 25
-                OFFSET %s
             """)
             self.cur.execute(purchase_history_query, (self._customer_id, offset,))
 
