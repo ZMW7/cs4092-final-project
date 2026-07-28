@@ -196,7 +196,7 @@ def getUserType():
     answer = input()
     match answer:
         case 'n' | 'N':
-            print("Press 's' for seller sign-in, 'm' for moderator sign-in, or any other symbol to go back")
+            print("Press 's' for merchant sign-in, 'm' for moderator sign-in, or any other symbol to go back")
             nextAnswer = input()
             match nextAnswer:
                 case 's':
