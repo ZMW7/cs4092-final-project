@@ -80,7 +80,7 @@ def authenticateCustomer():
         case 'login' | '' | _:
             pass
 
-    print("Enter username: ")
+    print("Enter Email Address: ")
     username = input()
     print("Enter password: ")
     password = input()
