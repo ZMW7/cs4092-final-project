@@ -192,23 +192,26 @@ def authenticateModerator():
 
 
 def getUserType():
-    print("Welcome to the marketplace! Signing in as customer? (y/n)")
-    answer = input()
-    match answer:
-        case 'n' | 'N':
-            print("Press 's' for merchant sign-in, 'm' for moderator sign-in, or any other symbol to go back")
-            nextAnswer = input()
-            match nextAnswer:
-                case 's':
-                    authenticateSeller()
-                case 'm':
-                    authenticateModerator()
-                case _:
-                    getUserType()
-                    return
-        case _:
-            authenticateCustomer()
-            return
+    try:
+        print("Welcome to the marketplace! Signing in as customer? (y/n)")
+        answer = input()
+        match answer:
+            case 'n' | 'N':
+                print("Press 's' for merchant sign-in, 'm' for moderator sign-in, or any other symbol to go back")
+                nextAnswer = input()
+                match nextAnswer:
+                    case 's':
+                        authenticateSeller()
+                    case 'm':
+                        authenticateModerator()
+                    case _:
+                        getUserType()
+                        return
+            case _:
+                authenticateCustomer()
+                return
+    except KeyboardInterrupt:
+        print("See ya! 👋")
 
 def main():
     getUserType()
