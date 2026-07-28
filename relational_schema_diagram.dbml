@@ -1,9 +1,7 @@
-// Use DBML to define your database structure
-// Docs: https://dbml.dbdiagram.io/docs
 
 Table "customers" {
   "id" INTEGER [pk, increment]
-  "primary_address_id" INTEGER [unique]
+  "primary_address_id" INTEGER
   "preferred_payment_id" INTEGER
   "email_address" VARCHAR(320) [unique, not null]
   "password_hash" CHAR(60) [not null]
@@ -18,7 +16,15 @@ Table "addresses" {
   "line1" VARCHAR(127) [not null]
   "line2" VARCHAR(127)
   "postal_code" VARCHAR(10) [not null]
-  "customer_id" INTEGER
+}
+
+Table "customer_addresses" {
+  "customer_id" INTEGER [not null]
+  "address_id" INTEGER [not null]
+
+  Indexes {
+    (customer_id, address_id) [pk]
+  }
 }
 
 Table "payment_methods" {
@@ -37,6 +43,7 @@ Table "products" {
   "seller_id" INTEGER [not null]
   "price" NUMERIC(10,2) [not null]
   "created_at" TIMESTAMPTZ [not null, default: `CURRENT_TIMESTAMP`]
+  "removed_at" TIMESTAMPTZ
 }
 
 Table "ratings" {
@@ -52,15 +59,17 @@ Table "ratings" {
 
 Table "sellers" {
   "id" INTEGER [pk, increment]
-  "seller_name" VARCHAR(63) [not null]
+  "seller_name" VARCHAR(63) [unique, not null]
+  "password_hash" CHAR(60) [not null]
   "created_at" TIMESTAMPTZ [not null, default: `CURRENT_TIMESTAMP`]
+  "removed_at" TIMESTAMPTZ
 }
 
 Table "moderators" {
   "id" INTEGER [pk, increment]
   "created_at" TIMESTAMPTZ [not null, default: `CURRENT_TIMESTAMP`]
   "first_name" VARCHAR(20) [not null]
-  "last_name" VARCHAR(30) [not null]
+  "last_name" VARCHAR(30) [unique, not null]
   "email_address" VARCHAR(255) [unique, not null]
   "password_hash" CHAR(60) [not null]
 }
@@ -70,12 +79,14 @@ Table "reports" {
   "customer_id" INTEGER [not null]
   "reviewed_by" INTEGER
   "reason" VARCHAR(60) [not null]
+  "product_id" INTEGER [not null]
   "created_at" TIMESTAMPTZ [not null, default: `CURRENT_TIMESTAMP`]
 }
 
 Table "product_removals" {
   "removed_by" INTEGER [not null]
   "product_id" INTEGER [not null]
+  "seller_id" INTEGER [not null]
   "removed_at" TIMESTAMPTZ [not null, default: `CURRENT_TIMESTAMP`]
 
   Indexes {
@@ -117,44 +128,111 @@ Table "deliveries" {
   "estimated_delivery_time" TIMESTAMPTZ
 }
 
-// TODO: Go through these and verify that they are correct
-
+// One to Many: 
+// - Every address can be the primary address of many customers
+// - every customer can have at most one primary address
 Ref "fk_primary_address":"addresses"."id" < "customers"."primary_address_id"
 
-Ref "fk_preferred_payment_id":"payment_methods"."id" < "customers"."preferred_payment_id"
+// One to One:
+// - Every payment method can be the preferred payment method of one customer
+// - Every customer can have at most one preferred payment method
+Ref "fk_preferred_payment_id":"payment_methods"."id" - "customers"."preferred_payment_id"
 
-Ref "fk_customer":"customers"."id" < "addresses"."customer_id"
+// Many to One
+// - One customer can have many entries in this table
+// - Each entry in this table has only one customer
+Ref "fk_customer":"customers"."id" > "customer_addresses"."customer_id"
 
-Ref "fk_address":"addresses"."id" < "payment_methods"."billing_address_id"
+// Many to One
+// - One address can have many entries in this table
+// - Every entry in this table has only one address
+Ref "fk_address":"addresses"."id" > "customer_addresses"."address_id"
 
+// One to Many
+// - One address can be associated with many payment methods
+// - Each payment method has only one billing address
+Ref "fk_address":"addresses"."id" > "payment_methods"."billing_address_id"
+
+// One to Many
+// - One customer can have many payment methods
+// - Every payment method is associated with one customer
 Ref "fk_customer":"customers"."id" < "payment_methods"."customer_id"
 
+// One to Many
+// - One seller can sell many products
+// - Every product can only be sold by one seller
 Ref "fk_seller":"sellers"."id" < "products"."seller_id"
 
+// One to Many
+// - One customer can give many ratings
+// - Every rating can only be given by one customer
 Ref "fk_customer":"customers"."id" < "ratings"."customer_id"
 
+// One to Many
+// - One product can receive many ratings
+// - Every rating rates one product
 Ref "fk_product":"products"."id" < "ratings"."product_id"
 
+// One to Many
+// - Each customer can many many reports
+// - Each report can only be made by one customer
 Ref "fk_customer":"customers"."id" < "reports"."customer_id"
 
+// One to Many
+// - Each moderator can review many reports
+// - Each report can only be reviewed by one moderator
 Ref "fk_moderator":"moderators"."id" < "reports"."reviewed_by"
 
+// One to Many
+// - Each moderator can remove many products
+// - Each product removal involves one moderator 
 Ref "fk_moderator":"moderators"."id" < "product_removals"."removed_by"
 
+// One to Many
+// - Each product can be removed by many product removals
+//     - For example, a product could be reinstated on the platform after being removed erroneously,
+//       then removed again at a later date.
+// - Each product removal involves one product 
 Ref "fk_product":"products"."id" < "product_removals"."product_id"
 
+// One to Many
+// - Each moderator can remove many sellers
+// - Each seller removal involves one moderator 
 Ref "fk_moderator":"moderators"."id" < "seller_removals"."removed_by"
 
+// One to Many
+// - Each merchant can be removed by many seller removals
+//     - For example, a merchant could be reinstated on on the platform after being removed erroneously,
+//       then removed again at a later date.
+// - Each seller removal involves one merchant
 Ref "fk_seller":"sellers"."id" < "seller_removals"."seller_id"
 
+// One to Many
+// - Each customer can make many purchases
+// - Every purchase is made by one customer
 Ref "fk_customer":"customers"."id" < "purchases"."customer_id"
 
+// One to Many
+// - Each payment method can be used in many purchases
+// - Each purchase uses only one payment method
 Ref "fk_payment_method":"payment_methods"."id" < "purchases"."payment_method_id"
 
+// One to Many
+// - Each purchase can involve many product sales
+// - Each product sale can be a part of only one purchase
 Ref "fk_purchase":"purchases"."id" < "product_sales"."purchase_id"
 
+// One to Many
+// - Each product can be involved in many product sales
+// - Each product sale can only involve one product.
 Ref "fk_product":"products"."id" < "product_sales"."product_id"
 
+// One to Many
+// - Each purchase can involve many deliveries
+// - Each delivery can only be made for one purchase
 Ref "fk_purchase":"purchases"."id" < "deliveries"."purchase_id"
 
-Ref "fk_address":"addresses"."id" <> "deliveries"."address_id"
+// One to Many
+// - Each address can be used in many deliveries
+// - Each delivery is shipped to one address
+Ref "fk_address":"addresses"."id" < "deliveries"."address_id"
