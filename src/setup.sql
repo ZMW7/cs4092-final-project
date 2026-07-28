@@ -5,7 +5,7 @@ CREATE DATABASE company_db;
 
 CREATE TABLE customers (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    primary_address_id INTEGER UNIQUE,
+    primary_address_id INTEGER,
     preferred_payment_id INTEGER,
     email_address VARCHAR(320) NOT NULL UNIQUE,
     password_hash CHAR(60) NOT NULL,
@@ -19,8 +19,13 @@ CREATE TABLE addresses (
     city VARCHAR(127) NOT NULL,
     line1 VARCHAR(127) NOT NULL,
     line2 VARCHAR(127),
-    postal_code VARCHAR(10) NOT NULL,
-    customer_id INTEGER
+    postal_code VARCHAR(10) NOT NULL
+);
+
+CREATE TABLE customer_addresses (
+    customer_id INTEGER NOT NULL,
+    address_id INTEGER NOT NULL,
+    PRIMARY KEY (customer_id, address_id)
 );
 
 CREATE TABLE payment_methods (
@@ -128,10 +133,14 @@ ADD CONSTRAINT fk_preferred_payment_id
     FOREIGN KEY (preferred_payment_id)
     REFERENCES payment_methods(id);
 
-ALTER TABLE addresses
+ALTER TABLE customer_addresses
 ADD CONSTRAINT fk_customer
-    FOREIGN KEY (customer_id) 
+    FOREIGN KEY (customer_id)
     REFERENCES customers (id);
+ALTER TABLE customer_addresses
+ADD CONSTRAINT fk_address
+    FOREIGN KEY (address_id)
+    REFERENCES addresses (id);
 
 ALTER TABLE payment_methods
 ADD CONSTRAINT fk_address
@@ -243,21 +252,35 @@ VALUES                      (   'primeminister@uk.gov', '$2a$12$gxPPc.V/70vD9Zku
 RETURNING id;
 
 -- Addresses
-INSERT INTO addresses       (   country,                administrative_division,    city,           line1,                  line2,              postal_code,    customer_id)
-VALUES                      (   'United Kingdom',       NULL,                       'London',       '10 Downing Street',    NULL,                'SWA1A 2AA',    (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'primeminister@uk.gov'));
+INSERT INTO addresses       (   country,                administrative_division,    city,           line1,                  line2,              postal_code)
+VALUES                      (   'United Kingdom',       NULL,                       'London',       '10 Downing Street',    NULL,                'SWA1A 2AA');
+INSERT INTO customer_addresses  (   customer_id, address_id ) VALUES    
+                                (   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'primeminister@uk.gov'),  (SELECT DISTINCT id FROM addresses WHERE line1 = '10 Downing Street')   );
 
-INSERT INTO addresses       (   country,                    administrative_division,    city,           line1,                  line2,              postal_code,    customer_id)
-VALUES                      (   'United States of America', 'Ohio',                     'Bexley',       '358 N. Parkview',      NULL,                '43209',        (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'governor@ohio.gov'));
+INSERT INTO addresses       (   country,                    administrative_division,    city,           line1,                  line2,              postal_code )
+VALUES                      (   'United States of America', 'Ohio',                     'Bexley',       '358 N. Parkview',      NULL,                '43209'    );
+INSERT INTO customer_addresses  (customer_id, address_id ) VALUES
+                                (   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'governor@ohio.gov'),     (SELECT DISTINCT id FROM addresses WHERE line1 = '358 N. Parkview')     );
 
-INSERT INTO addresses       (   country,                    administrative_division,    city,                   line1,                  line2,              postal_code,    customer_id)
-VALUES                      (   'Japan',                    'Nagano',                   '767-3 Karuizawa',      'Kitasaku District',    'PO Box 232',       '389-0199',     (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'masayoshi.takanaka@takanaka.com'));
+INSERT INTO addresses       (   country,                    administrative_division,    city,                   line1,                  line2,              postal_code )
+VALUES                      (   'Japan',                    'Nagano',                   '767-3 Karuizawa',      'Kitasaku District',    'PO Box 232',       '389-0199'  );
+INSERT INTO customer_addresses  (customer_id, address_id) VALUES
+                                (   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'masayoshi.takanaka@takanaka.com'), (SELECT DISTINCT id FROM addresses WHERE line1 = 'Kitasaku District')    );
 
-INSERT INTO addresses       (   country,                    administrative_division,    city,                   line1,                      line2,              postal_code,    customer_id) VALUES
-                            (   'United States of America', 'Illinois',                 'Chicago',              '7949 S Essex Ave',         'APT 1',            '60617-1395',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'minecraftiscool@gmail.com')),
-                            (   'India',                    'Telangana',                'Hyderabad',            'Building No. 3-6-276/1 & 277/1 University, Road, Himayatnagar', NULL, '500029', (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jane.doe@example.com')),
-                            (   'United States of America', 'Wisconsin',                'Milwaukee',            '220 W Fond Du Lac Ave',    NULL,               '53208-4092',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jim.joe@example.com')),
-                            (   'Hungary',                  NULL,                       'Budapest',             'Kossuth Lajos',            'u. 14-16',         '1053',         (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'friendlygreeter@gmail.com')),
-                            (   'United States of America', 'Colorado',                 'Aurora',               '14132 E Colorado Dr',      NULL,               '80012-5912',   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'grant@example.com'));
+INSERT INTO addresses       (   country,                    administrative_division,    city,                   line1,                      line2,              postal_code ) VALUES
+                            (   'United States of America', 'Illinois',                 'Chicago',              '7949 S Essex Ave',         'APT 1',            '60617-1395'                    ),
+                            (   'India',                    'Telangana',                'Hyderabad',            'Building No. 3-6-276/1 & 277/1 University, Road, Himayatnagar', NULL, '500029' ),
+                            (   'United States of America', 'Wisconsin',                'Milwaukee',            '220 W Fond Du Lac Ave',    NULL,               '53208-4092'                    ),
+                            (   'Hungary',                  NULL,                       'Budapest',             'Kossuth Lajos',            'u. 14-16',         '1053'                          ),
+                            (   'United States of America', 'Colorado',                 'Aurora',               '14132 E Colorado Dr',      NULL,               '80012-5912'                    );
+
+INSERT INTO customer_addresses  (   address_id,    customer_id) VALUES
+                                (   (SELECT DISTINCT id FROM addresses WHERE postal_code = '60617-1395'),   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'minecraftiscool@gmail.com')),
+                                (   (SELECT DISTINCT id FROM addresses WHERE postal_code = '500029'),       (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jane.doe@example.com')),
+                                (   (SELECT DISTINCT id FROM addresses WHERE postal_code = '53208-4092'),   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'jim.joe@example.com')),
+                                (   (SELECT DISTINCT id FROM addresses WHERE postal_code = '1053'),         (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'friendlygreeter@gmail.com')),
+                                (   (SELECT DISTINCT id FROM addresses WHERE postal_code = '80012-5912'),   (SELECT DISTINCT id FROM customers WHERE customers.email_address = 'grant@example.com'));
+
 
 
 INSERT INTO payment_methods (   card_number,        card_expiration,    card_code,  billing_address_id, customer_id) VALUES

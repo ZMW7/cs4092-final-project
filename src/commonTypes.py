@@ -17,7 +17,6 @@ class AddressEntry(NamedTuple):
     line1: str
     line2: str | None
     postal_code: str
-    customer_id: int
 
 class PaymentMethodEntry(NamedTuple):
     id: int
