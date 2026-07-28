@@ -27,8 +27,8 @@ $(VENV_ACTIVATE):
 
 # Re-run pip install only if requirements.txt changed since the last install
 $(STAMP): requirements.txt $(VENV_ACTIVATE)
-	$(VENV_PIP) install --upgrade pip
-	$(VENV_PIP) install -r requirements.txt
+	$(VENV_PY) -m pip install --upgrade pip
+	$(VENV_PY) -m pip install -r requirements.txt
 	$(TOUCH) $(STAMP)
 
 setup: $(STAMP)
