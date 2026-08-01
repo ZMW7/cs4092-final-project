@@ -243,7 +243,6 @@ class CustomerView:
         return address
 
     def update_preferred_payment_method(self, payment_id: int):
-        print(f"Updating preferred payment method to id {payment_id}")
         self.cur.execute("""
             UPDATE customers
             SET preferred_payment_id = %s
